@@ -35,6 +35,7 @@ export default function CreateStoryPage() {
   const [currentStory, setCurrentStory] = useState<Story | null>(null)
   const [savedStories, setSavedStories] = useState<Story[]>([])
   const [isGeneratingStory, setIsGeneratingStory] = useState(false)
+  const [generatingImages, setGeneratingImages] = useState<Set<string>>(new Set())
 
   // Load saved stories from localStorage
   useEffect(() => {
@@ -170,30 +171,61 @@ export default function CreateStoryPage() {
     }
   }
 
+  // FIXED: Replace Unsplash with actual AI image generation API call
   const generateStoryImage = async (pageId: string, prompt: string) => {
     if (!currentStory) return
 
+    // Add to generating state - FIXED: Use Array.from for TypeScript compatibility
+    setGeneratingImages(prev => new Set(Array.from(prev).concat(pageId)))
+
     try {
-      // Enhanced image generation with better search terms
-      const imageUrl = `https://source.unsplash.com/800x600/?${encodeURIComponent(prompt)}&children,storybook,illustration&sig=${pageId}`
+      console.log('🎨 Generating AI image for page:', pageId, 'prompt:', prompt)
       
-      const updatedStory = {
-        ...currentStory,
-        pages: currentStory.pages.map(page =>
-          page.id === pageId ? { ...page, imageUrl } : page
-        )
+      // Call the actual AI image generation API
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt: prompt,
+          pageId: pageId 
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Image generation API failed: ${response.status}`)
       }
       
-      setCurrentStory(updatedStory)
+      const result = await response.json()
+      console.log('✅ AI image generation result:', result)
       
-      // Update saved stories
-      const updatedSavedStories = savedStories.map(story =>
-        story.id === currentStory.id ? updatedStory : story
-      )
-      setSavedStories(updatedSavedStories)
-      saveToStorage('storyloom_stories', updatedSavedStories)
+      if (result.success && result.imageUrl) {
+        // Update the story with the generated image
+        const updatedStory = {
+          ...currentStory,
+          pages: currentStory.pages.map(page =>
+            page.id === pageId ? { ...page, imageUrl: result.imageUrl } : page
+          )
+        }
+        
+        setCurrentStory(updatedStory)
+        
+        // Update saved stories
+        const updatedSavedStories = savedStories.map(story =>
+          story.id === currentStory.id ? updatedStory : story
+        )
+        setSavedStories(updatedSavedStories)
+        saveToStorage('storyloom_stories', updatedSavedStories)
+        
+        console.log('✅ Story updated with AI-generated image')
+      } else {
+        throw new Error(result.error || 'Unknown error occurred during image generation')
+      }
     } catch (error) {
-      console.error('Image generation failed:', error)
+      console.error('❌ AI image generation failed:', error)
+      alert(`Image generation failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`)
+    } finally {
+      // Remove from generating state - FIXED: Use Array.from for TypeScript compatibility
+      setGeneratingImages(prev => new Set(Array.from(prev).filter(id => id !== pageId)))
     }
   }
 
@@ -410,6 +442,11 @@ export default function CreateStoryPage() {
                 <div className="aspect-video bg-gray-200 rounded-xl mb-4 flex items-center justify-center overflow-hidden">
                   {page.imageUrl ? (
                     <img src={page.imageUrl} alt={`Page ${index + 1}`} className="w-full h-full object-cover" />
+                  ) : generatingImages.has(page.id) ? (
+                    <div className="text-center">
+                      <div className="animate-spin w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                      <p className="text-gray-600">🎨 Generating AI image with DALL-E...</p>
+                    </div>
                   ) : (
                     <div className="text-center">
                       <div className="text-4xl mb-2">🖼️</div>
@@ -434,9 +471,17 @@ export default function CreateStoryPage() {
                 
                 <button
                   onClick={() => generateStoryImage(page.id, page.imagePrompt || page.text)}
-                  className="w-full bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 mb-2"
+                  disabled={generatingImages.has(page.id)}
+                  className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-400 disabled:to-gray-400 text-white px-4 py-2 rounded-xl hover:bg-green-600 mb-2 font-medium transition-all disabled:cursor-not-allowed"
                 >
-                  🎨 Generate Image
+                  {generatingImages.has(page.id) ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      Generating AI Image...
+                    </div>
+                  ) : (
+                    '🎨 Generate AI Image with DALL-E'
+                  )}
                 </button>
                 
                 <input
@@ -468,6 +513,14 @@ export default function CreateStoryPage() {
                 >
                   📷 Upload Image
                 </label>
+
+                {page.imagePrompt && (
+                  <div className="mt-2">
+                    <p className="text-white/60 text-sm">
+                      <strong>AI Prompt:</strong> {page.imagePrompt}
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
