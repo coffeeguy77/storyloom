@@ -12,6 +12,16 @@ export default function HomePage() {
     return () => clearTimeout(timer)
   }, [])
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    // Hide the image
+    e.currentTarget.style.display = 'none'
+    // Show the emoji fallback (next sibling)
+    const nextElement = e.currentTarget.nextElementSibling as HTMLElement
+    if (nextElement) {
+      nextElement.style.display = 'block'
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500">
       <div className="bg-black/20 border-b border-white/20">
@@ -25,13 +35,7 @@ export default function HomePage() {
                 width="60" 
                 height="40"
                 className="rounded-lg shadow-lg"
-                onError={(e) => {
-                  // Fallback to emoji if logo not found
-                  e.currentTarget.style.display = 'none'
-                  if (e.currentTarget.nextElementSibling) {
-                    e.currentTarget.nextElementSibling.style.display = 'block'
-                  }
-                }}
+                onError={handleImageError}
               />
               <div className="text-3xl" style={{display: 'none'}}>📚</div>
               <h1 className="text-2xl font-bold text-white">StoryLoom</h1>
@@ -50,13 +54,7 @@ export default function HomePage() {
               width="240" 
               height="160"
               className="mx-auto rounded-2xl shadow-2xl max-w-[280px] w-full h-auto sm:max-w-[320px] md:max-w-[400px]"
-              onError={(e) => {
-                // Fallback to emoji if logo not found
-                e.currentTarget.style.display = 'none'
-                if (e.currentTarget.nextElementSibling) {
-                  e.currentTarget.nextElementSibling.style.display = 'block'
-                }
-              }}
+              onError={handleImageError}
             />
             <div className="text-6xl sm:text-8xl mb-4" style={{display: 'none'}}>📚</div>
           </div>
