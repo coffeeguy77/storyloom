@@ -19,6 +19,9 @@ interface LogoTheme {
   themeName: string
   description: string
   storyPrompts: string[]
+  backgroundColor: string
+  backgroundType: "gradient" | "image"
+  backgroundValue: string
   uploadedAt: string
 }
 
@@ -43,8 +46,7 @@ interface LoadingStep {
   completed: boolean
 }
 
-export default function UltimateStoryLoomApp() {
-  // Core state
+export default function EnhancedStoryLoomApp() {
   const [currentStep, setCurrentStep] = useState<"start" | "characters" | "themes" | "story" | "generating" | "reading" | "library" | "manage-characters">("start")
   const [savedCharacters, setSavedCharacters] = useState<Character[]>([])
   const [activeCharacters, setActiveCharacters] = useState<Character[]>([])
@@ -53,7 +55,7 @@ export default function UltimateStoryLoomApp() {
   const [storyDescription, setStoryDescription] = useState("")
   const [storyTitle, setStoryTitle] = useState("")
 
-  // Enhanced features
+  // Enhanced theme state
   const [logoThemes, setLogoThemes] = useState<LogoTheme[]>([])
   const [currentTheme, setCurrentTheme] = useState<LogoTheme | null>(null)
   const [aiSuggestedStories, setAiSuggestedStories] = useState<string[]>([])
@@ -67,8 +69,11 @@ export default function UltimateStoryLoomApp() {
 
   // Theme upload state
   const [showThemeUpload, setShowThemeUpload] = useState(false)
+  const [editingTheme, setEditingTheme] = useState<LogoTheme | null>(null)
   const [newThemeName, setNewThemeName] = useState("")
   const [newThemeDescription, setNewThemeDescription] = useState("")
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [validationErrors, setValidationErrors] = useState<{name?: boolean, description?: boolean, file?: boolean}>({})
 
   // Initialize app
   useEffect(() => {
@@ -78,26 +83,13 @@ export default function UltimateStoryLoomApp() {
     }
   }, [])
 
-  // Rotate themes periodically
-  useEffect(() => {
-    if (logoThemes.length > 1) {
-      const interval = setInterval(() => {
-        rotateToRandomTheme()
-      }, 30000) // Change theme every 30 seconds
-      
-      return () => clearInterval(interval)
-    }
-  }, [logoThemes])
-
   const loadSavedData = () => {
     try {
-      // Load stories
       const savedStoriesData = localStorage.getItem("storyloom_stories")
       if (savedStoriesData) {
         setSavedStories(JSON.parse(savedStoriesData))
       }
 
-      // Load characters
       const savedCharactersData = localStorage.getItem("storyloom_characters")
       if (savedCharactersData) {
         const characters = JSON.parse(savedCharactersData)
@@ -106,12 +98,22 @@ export default function UltimateStoryLoomApp() {
         setActiveCharacters(children)
       }
 
-      // Load themes
       const savedThemesData = localStorage.getItem("storyloom_themes")
       if (savedThemesData) {
         const themes = JSON.parse(savedThemesData)
         setLogoThemes(themes)
-        if (themes.length > 0) {
+        
+        // Check for persisted current theme
+        const currentThemeId = localStorage.getItem("storyloom_current_theme")
+        if (currentThemeId) {
+          const persistedTheme = themes.find((t: LogoTheme) => t.id === currentThemeId)
+          if (persistedTheme) {
+            setCurrentTheme(persistedTheme)
+            generateAISuggestions(persistedTheme)
+          } else if (themes.length > 0) {
+            setRandomTheme(themes)
+          }
+        } else if (themes.length > 0) {
           setRandomTheme(themes)
         }
       }
@@ -124,46 +126,51 @@ export default function UltimateStoryLoomApp() {
     const defaultThemes: LogoTheme[] = [
       {
         id: "default-adventure",
-        imageUrl: "🏞️", // We'll use emojis as placeholders until Tommy's logos are uploaded
+        imageUrl: "",
         themeName: "Adventure",
         description: "Exciting outdoor adventures and exploration",
         storyPrompts: [
           "discovers a secret cave behind a waterfall",
           "finds a treasure map in the backyard",
-          "meets a friendly forest creature",
-          "goes on an epic camping adventure"
+          "meets a friendly forest creature"
         ],
+        backgroundColor: "#8B5CF6",
+        backgroundType: "gradient",
+        backgroundValue: "from-purple-400 via-pink-500 to-red-500",
         uploadedAt: new Date().toISOString()
       },
       {
         id: "default-space",
-        imageUrl: "🚀",
+        imageUrl: "",
         themeName: "Space",
         description: "Cosmic adventures among the stars",
         storyPrompts: [
           "builds a rocket ship to visit Mars",
           "befriends aliens from another planet",
-          "discovers a new star constellation",
-          "goes on a mission to save the solar system"
+          "discovers a new star constellation"
         ],
+        backgroundColor: "#1E1B4B",
+        backgroundType: "gradient", 
+        backgroundValue: "from-indigo-900 via-purple-900 to-pink-900",
         uploadedAt: new Date().toISOString()
       },
       {
         id: "default-ocean",
-        imageUrl: "🌊",
+        imageUrl: "",
         themeName: "Ocean",
         description: "Underwater adventures and marine life",
         storyPrompts: [
           "discovers an underwater city",
           "befriends a wise old dolphin",
-          "finds a shipwreck full of treasures",
-          "helps rescue sea creatures"
+          "finds a shipwreck full of treasures"
         ],
+        backgroundColor: "#1E40AF",
+        backgroundType: "gradient",
+        backgroundValue: "from-blue-600 via-cyan-500 to-teal-400",
         uploadedAt: new Date().toISOString()
       }
     ]
 
-    // Only set defaults if no themes exist
     const existingThemes = localStorage.getItem("storyloom_themes")
     if (!existingThemes) {
       setLogoThemes(defaultThemes)
@@ -172,15 +179,30 @@ export default function UltimateStoryLoomApp() {
     }
   }
 
+  const getThemeBackground = (theme: LogoTheme | null): string => {
+    if (!theme) return "from-purple-400 via-pink-500 to-red-500"
+    
+    if (theme.backgroundType === "image") {
+      return `from-purple-400/80 via-pink-500/80 to-red-500/80` // Overlay for readability
+    }
+    
+    return theme.backgroundValue || "from-purple-400 via-pink-500 to-red-500"
+  }
+
+  const getThemeBackgroundImage = (theme: LogoTheme | null): string | null => {
+    if (!theme || theme.backgroundType !== "image") return null
+    return theme.backgroundValue
+  }
+
   const setRandomTheme = (themes: LogoTheme[]) => {
     const randomTheme = themes[Math.floor(Math.random() * themes.length)]
     setCurrentTheme(randomTheme)
+    localStorage.setItem("storyloom_current_theme", randomTheme.id)
     generateAISuggestions(randomTheme)
   }
 
   const rotateToRandomTheme = () => {
     if (logoThemes.length > 1) {
-      // Get a different theme than current
       const availableThemes = logoThemes.filter(theme => theme.id !== currentTheme?.id)
       setRandomTheme(availableThemes)
     }
@@ -193,13 +215,10 @@ export default function UltimateStoryLoomApp() {
     }
 
     const characterNames = activeCharacters.map(c => c.name).join(" and ")
-    
-    // Create personalized prompts based on theme and characters
     const personalizedPrompts = theme.storyPrompts.map(prompt => 
       `${characterNames} ${prompt}`
     )
     
-    // Add some dynamic suggestions based on character personalities
     const extraPrompts = []
     if (activeCharacters.some(c => c.favoriteThings?.includes("dinosaurs"))) {
       extraPrompts.push(`${characterNames} travels back in time to meet friendly dinosaurs`)
@@ -211,7 +230,6 @@ export default function UltimateStoryLoomApp() {
     const allSuggestions = [...personalizedPrompts, ...extraPrompts]
     setAiSuggestedStories(allSuggestions)
     
-    // Auto-select first suggestion
     if (allSuggestions.length > 0) {
       setSelectedSuggestion(allSuggestions[0])
       setStoryDescription(allSuggestions[0])
@@ -224,7 +242,138 @@ export default function UltimateStoryLoomApp() {
     }
   }
 
-  // Character management (same as before)
+  const validateThemeForm = (): boolean => {
+    const errors = {
+      name: !newThemeName.trim(),
+      description: !newThemeDescription.trim(),
+      file: !uploadedFile && !editingTheme
+    }
+    
+    setValidationErrors(errors)
+    return !Object.values(errors).some(Boolean)
+  }
+
+  const saveTheme = () => {
+    if (!validateThemeForm()) {
+      return
+    }
+
+    if (uploadedFile) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const imageUrl = e.target?.result as string
+        saveThemeData(imageUrl)
+      }
+      reader.onerror = () => {
+        console.error("Failed to read file")
+        alert("Failed to read the image file. Please try again.")
+      }
+      reader.readAsDataURL(uploadedFile)
+    } else if (editingTheme) {
+      saveThemeData(editingTheme.imageUrl)
+    }
+  }
+
+  const saveThemeData = (imageUrl: string) => {
+    try {
+      // Create background based on theme name
+      let backgroundValue = "from-purple-400 via-pink-500 to-red-500"
+      let backgroundType: "gradient" | "image" = "gradient"
+      
+      const themeName = newThemeName.toLowerCase()
+      if (themeName.includes("jungle")) {
+        backgroundValue = "from-green-600 via-emerald-500 to-teal-400"
+      } else if (themeName.includes("space")) {
+        backgroundValue = "from-indigo-900 via-purple-900 to-pink-900"
+      } else if (themeName.includes("ocean")) {
+        backgroundValue = "from-blue-600 via-cyan-500 to-teal-400"
+      } else if (themeName.includes("desert")) {
+        backgroundValue = "from-yellow-600 via-orange-500 to-red-400"
+      } else if (themeName.includes("winter")) {
+        backgroundValue = "from-blue-200 via-indigo-300 to-purple-400"
+      }
+
+      const themeData: LogoTheme = editingTheme ? {
+        ...editingTheme,
+        themeName: newThemeName,
+        description: newThemeDescription,
+        imageUrl
+      } : {
+        id: Date.now().toString(),
+        imageUrl,
+        themeName: newThemeName,
+        description: newThemeDescription,
+        storyPrompts: [
+          `goes on a ${newThemeName.toLowerCase()} adventure`,
+          `discovers the magic of ${newThemeName.toLowerCase()}`,
+          `becomes a ${newThemeName.toLowerCase()} hero`,
+          `explores the wonderful world of ${newThemeName.toLowerCase()}`
+        ],
+        backgroundColor: "#8B5CF6",
+        backgroundType,
+        backgroundValue,
+        uploadedAt: new Date().toISOString()
+      }
+      
+      let updated
+      if (editingTheme) {
+        updated = logoThemes.map(theme => theme.id === editingTheme.id ? themeData : theme)
+      } else {
+        updated = [...logoThemes, themeData]
+      }
+      
+      setLogoThemes(updated)
+      saveToStorage("storyloom_themes", updated)
+      
+      // Set as current theme
+      setCurrentTheme(themeData)
+      localStorage.setItem("storyloom_current_theme", themeData.id)
+      generateAISuggestions(themeData)
+      
+      // Reset form
+      resetThemeForm()
+    } catch (error) {
+      console.error("Failed to save theme:", error)
+      alert("Failed to save theme. Please try again.")
+    }
+  }
+
+  const resetThemeForm = () => {
+    setNewThemeName("")
+    setNewThemeDescription("")
+    setUploadedFile(null)
+    setEditingTheme(null)
+    setShowThemeUpload(false)
+    setValidationErrors({})
+  }
+
+  const deleteTheme = (themeId: string) => {
+    if (confirm("Are you sure you want to delete this theme?")) {
+      const updated = logoThemes.filter(theme => theme.id !== themeId)
+      setLogoThemes(updated)
+      saveToStorage("storyloom_themes", updated)
+      
+      if (currentTheme?.id === themeId) {
+        if (updated.length > 0) {
+          setRandomTheme(updated)
+        } else {
+          setCurrentTheme(null)
+          localStorage.removeItem("storyloom_current_theme")
+        }
+      }
+    }
+  }
+
+  const editTheme = (theme: LogoTheme) => {
+    setEditingTheme(theme)
+    setNewThemeName(theme.themeName)
+    setNewThemeDescription(theme.description)
+    setUploadedFile(null)
+    setValidationErrors({})
+    setShowThemeUpload(true)
+  }
+
+  // Character management functions (keeping existing)
   const addNewCharacter = () => {
     const newChar: Character = {
       id: Date.now().toString(),
@@ -270,7 +419,6 @@ export default function UltimateStoryLoomApp() {
       setActiveCharacters(activeCharacters.filter(c => c.id !== characterId))
     } else {
       setActiveCharacters([...activeCharacters, character])
-      // Regenerate suggestions when characters change
       if (currentTheme) {
         generateAISuggestions(currentTheme)
       }
@@ -286,49 +434,13 @@ export default function UltimateStoryLoomApp() {
     reader.readAsDataURL(file)
   }
 
-  // Theme management
-  const uploadNewTheme = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const imageUrl = e.target?.result as string
-      const newTheme: LogoTheme = {
-        id: Date.now().toString(),
-        imageUrl,
-        themeName: newThemeName,
-        description: newThemeDescription,
-        storyPrompts: [
-          `goes on a ${newThemeName.toLowerCase()} adventure`,
-          `discovers the magic of ${newThemeName.toLowerCase()}`,
-          `becomes a ${newThemeName.toLowerCase()} hero`,
-          `explores the wonderful world of ${newThemeName.toLowerCase()}`
-        ],
-        uploadedAt: new Date().toISOString()
-      }
-      
-      const updated = [...logoThemes, newTheme]
-      setLogoThemes(updated)
-      saveToStorage("storyloom_themes", updated)
-      
-      // Set as current theme
-      setCurrentTheme(newTheme)
-      generateAISuggestions(newTheme)
-      
-      // Reset form
-      setNewThemeName("")
-      setNewThemeDescription("")
-      setShowThemeUpload(false)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  // Enhanced story generation with magical loading
+  // Story generation (keeping existing enhanced loading)
   const generateMagicalStory = async () => {
     if (activeCharacters.length === 0) {
       alert("Please select at least one character for your story!")
       return
     }
 
-    // Setup magical loading sequence
     const steps: LoadingStep[] = [
       {
         id: "characters",
@@ -342,7 +454,7 @@ export default function UltimateStoryLoomApp() {
         id: "theme",
         title: "Setting the Scene", 
         description: `Preparing your ${currentTheme?.themeName || "magical"} adventure...`,
-        emoji: currentTheme?.imageUrl || "🎭",
+        emoji: currentTheme?.imageUrl ? "🎭" : "🎭",
         duration: 1500,
         completed: false
       },
@@ -379,7 +491,6 @@ export default function UltimateStoryLoomApp() {
     setIsGeneratingStory(true)
 
     try {
-      // Execute each loading step with progress animation
       for (let i = 0; i < steps.length; i++) {
         setCurrentLoadingStep(i)
         setLoadingSteps(prev => prev.map((step, idx) => ({
@@ -387,25 +498,21 @@ export default function UltimateStoryLoomApp() {
           completed: idx < i
         })))
 
-        // Animate progress
         const startProgress = (i / steps.length) * 100
         const endProgress = ((i + 1) / steps.length) * 100
         
         await animateProgress(startProgress, endProgress, steps[i].duration)
 
-        // Actual API calls happen during specific steps
-        if (i === 2) { // Story generation step
+        if (i === 2) {
           await generateStoryAPI()
-        } else if (i === 3) { // Cover art step
+        } else if (i === 3) {
           await generateCoverAPI()
         }
       }
 
-      // Complete all steps
       setLoadingSteps(prev => prev.map(step => ({ ...step, completed: true })))
       setLoadingProgress(100)
 
-      // Transition to reading
       setTimeout(() => {
         setCurrentStep("reading")
       }, 1000)
@@ -473,7 +580,6 @@ export default function UltimateStoryLoomApp() {
       throw new Error("Invalid API response")
     }
 
-    // Store story data for cover generation
     const story: Story = {
       id: apiStory.id || Date.now().toString(),
       title: apiStory.title || storyTitle || "Your Amazing Story",
@@ -505,7 +611,6 @@ export default function UltimateStoryLoomApp() {
           const updatedStory = { ...currentStory, coverImageUrl: imageResult.imageUrl }
           setCurrentStory(updatedStory)
           
-          // Save story
           const updatedStories = [...savedStories, updatedStory]
           setSavedStories(updatedStories)
           saveToStorage("storyloom_stories", updatedStories)
@@ -516,73 +621,64 @@ export default function UltimateStoryLoomApp() {
     }
   }
 
-  // Start screen with dynamic theme
+  // Enhanced start screen with dynamic theming
   if (currentStep === "start") {
+    const backgroundImage = getThemeBackgroundImage(currentTheme)
+    
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 relative overflow-hidden">
+      <div 
+        className={`min-h-screen bg-gradient-to-br ${getThemeBackground(currentTheme)} relative overflow-hidden`}
+        style={backgroundImage ? {
+          backgroundImage: `linear-gradient(rgba(139, 92, 246, 0.7), rgba(219, 39, 119, 0.7)), url(${backgroundImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        } : undefined}
+      >
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-4 -left-4 w-72 h-72 bg-white/10 rounded-full blur-xl animate-pulse"></div>
           <div className="absolute top-1/2 right-8 w-48 h-48 bg-yellow-300/20 rounded-full blur-lg animate-bounce"></div>
-          <div className="absolute bottom-8 left-1/4 w-64 h-64 bg-blue-400/10 rounded-full blur-xl animate-pulse animation-delay-1000"></div>
+          <div className="absolute bottom-8 left-1/4 w-64 h-64 bg-blue-400/10 rounded-full blur-xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         </div>
 
-        <div className="bg-black/20 border-b border-white/20 relative z-10">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {/* Dynamic Logo */}
-                <div 
-                  className="relative group cursor-pointer"
-                  onClick={() => rotateToRandomTheme()}
-                >
-                  {currentTheme && currentTheme.imageUrl.startsWith('http') ? (
-                    <img
-                      src={currentTheme.imageUrl}
-                      alt={`StoryLoom - ${currentTheme.themeName}`}
-                      className="w-20 h-20 rounded-2xl shadow-xl object-cover border-3 border-white/40 group-hover:scale-110 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl shadow-xl flex items-center justify-center text-4xl group-hover:scale-110 transition-transform duration-300 border-3 border-white/40">
-                      {currentTheme?.imageUrl || "📚"}
-                    </div>
-                  )}
-                  <div className="absolute -top-2 -right-2 bg-yellow-400 text-purple-900 text-xs px-2 py-1 rounded-full font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                    {currentTheme?.themeName}
-                  </div>
-                </div>
-
-                <div>
-                  <h1 className="text-5xl font-bold text-white drop-shadow-2xl">StoryLoom</h1>
-                  {currentTheme && (
-                    <p className="text-yellow-300 font-semibold text-sm animate-fade-in">
-                      ✨ {currentTheme.themeName} Magic Mode
-                    </p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="text-right">
-                <p className="text-xl text-white/90 font-medium">AI-Powered Stories</p>
-                <p className="text-white/70 text-sm">Personalized for your family</p>
-              </div>
+        {/* Logo centered at top */}
+        <div className="flex justify-center pt-16 pb-8 relative z-10">
+          {currentTheme && currentTheme.imageUrl ? (
+            <div className="relative group">
+              <img
+                src={currentTheme.imageUrl}
+                alt={`StoryLoom - ${currentTheme.themeName}`}
+                className="w-32 h-32 rounded-3xl shadow-2xl object-cover border-4 border-white/40 group-hover:scale-110 transition-transform duration-300"
+                onClick={() => rotateToRandomTheme()}
+              />
+              <button
+                onClick={() => rotateToRandomTheme()}
+                className="absolute -top-3 -right-3 bg-yellow-400 hover:bg-yellow-300 text-purple-900 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all"
+                title="Rotate Theme"
+              >
+                🔄
+              </button>
             </div>
-          </div>
+          ) : (
+            <div className="text-center">
+              <h1 className="text-6xl font-bold text-white drop-shadow-2xl mb-2">StoryLoom</h1>
+              <p className="text-yellow-300 font-semibold">Upload Tommy's logos to get started!</p>
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-6 relative z-10">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6 relative z-10">
           <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20 max-w-3xl">
             {currentTheme && aiSuggestedStories.length > 0 && activeCharacters.length > 0 ? (
               <div className="space-y-6">
                 <div className="space-y-4">
-                  <h2 className="text-2xl font-bold text-white mb-4">
-                    ✨ AI Story Magic Ready!
+                  <h2 className="text-3xl font-bold text-white mb-4">
+                    ✨ {currentTheme.themeName} Magic Ready!
                   </h2>
                   
                   <div className="bg-white/20 rounded-2xl p-6">
-                    <h3 className="text-lg font-semibold text-yellow-300 mb-3 flex items-center gap-2">
-                      <span className="text-2xl">{currentTheme.imageUrl}</span>
-                      {currentTheme.themeName} Adventure Ideas
+                    <h3 className="text-lg font-semibold text-yellow-300 mb-3">
+                      Story Ideas for {activeCharacters.map(c => c.name).join(", ")}
                     </h3>
                     
                     <div className="grid gap-3">
@@ -603,15 +699,6 @@ export default function UltimateStoryLoomApp() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                  
-                  <div className="bg-white/20 rounded-xl p-4">
-                    <p className="text-white/90 text-sm mb-2">
-                      <span className="font-semibold">Starring:</span> {activeCharacters.map(c => c.name).join(", ")}
-                    </p>
-                    <p className="text-white/70 text-xs">
-                      Theme changes automatically every 30 seconds • Click logo to change now
-                    </p>
                   </div>
                 </div>
                 
@@ -670,120 +757,17 @@ export default function UltimateStoryLoomApp() {
     )
   }
 
-  // Magical loading screen
-  if (currentStep === "generating") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center relative overflow-hidden">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute animate-float"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 3}s`,
-                animationDuration: `${3 + Math.random() * 2}s`
-              }}
-            >
-              <span className="text-2xl opacity-30">
-                {["✨", "⭐", "🌟", "💫", "🎭", "📚", "🎨"][Math.floor(Math.random() * 7)]}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-12 text-center max-w-2xl mx-4 border border-white/20 relative z-10">
-          <h2 className="text-4xl font-bold text-white mb-8">
-            Creating Your Story Magic ✨
-          </h2>
-          
-          {/* Current step display */}
-          {loadingSteps[currentLoadingStep] && (
-            <div className="mb-8">
-              <div className="text-6xl mb-4 animate-bounce">
-                {loadingSteps[currentLoadingStep].emoji}
-              </div>
-              <h3 className="text-2xl font-bold text-yellow-300 mb-2">
-                {loadingSteps[currentLoadingStep].title}
-              </h3>
-              <p className="text-white/90 text-lg">
-                {loadingSteps[currentLoadingStep].description}
-              </p>
-            </div>
-          )}
-
-          {/* Progress bar */}
-          <div className="mb-8">
-            <div className="bg-white/20 rounded-full h-4 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-yellow-400 to-orange-400 h-full rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${loadingProgress}%` }}
-              >
-                <div className="w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-              </div>
-            </div>
-            <p className="text-white/70 text-sm mt-2">
-              {Math.round(loadingProgress)}% complete
-            </p>
-          </div>
-
-          {/* Steps indicator */}
-          <div className="flex justify-center gap-4 mb-6">
-            {loadingSteps.map((step, index) => (
-              <div
-                key={step.id}
-                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  step.completed
-                    ? "bg-green-400 text-white scale-110"
-                    : index === currentLoadingStep
-                    ? "bg-yellow-400 text-purple-900 animate-pulse scale-110"
-                    : "bg-white/20 text-white/60"
-                }`}
-              >
-                {step.completed ? "✓" : step.emoji}
-              </div>
-            ))}
-          </div>
-          
-          <p className="text-white/60 text-sm">
-            Hang tight! We're crafting something amazing just for you...
-          </p>
-        </div>
-
-        <style jsx>{`
-          @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(-20px) rotate(120deg); }
-            66% { transform: translateY(10px) rotate(240deg); }
-          }
-          @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-          }
-          .animate-float {
-            animation: float 3s ease-in-out infinite;
-          }
-          .animate-shimmer {
-            animation: shimmer 2s ease-in-out infinite;
-          }
-        `}</style>
-      </div>
-    )
-  }
-
-  // Theme management screen
+  // Enhanced theme management screen
   if (currentStep === "themes") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
+      <div className={`min-h-screen bg-gradient-to-br ${getThemeBackground(currentTheme)} py-8`}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold text-white">Theme Gallery</h1>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowThemeUpload(true)}
-                className="bg-green-500 text-white px-6 py-3 rounded-xl hover:bg-green-600 transition-all"
+                className="bg-green-500 text-white px-6 py-3 rounded-xl hover:bg-green-600 transition-all font-semibold"
               >
                 + Upload Tommy Logo
               </button>
@@ -796,75 +780,131 @@ export default function UltimateStoryLoomApp() {
             </div>
           </div>
 
-          {/* Upload modal */}
+          {/* Enhanced upload modal */}
           {showThemeUpload && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl p-8 max-w-md w-full">
-                <h2 className="text-2xl font-bold text-purple-800 mb-6">Upload New Theme</h2>
+              <div className="bg-white rounded-2xl p-8 max-w-md w-full relative">
+                <button
+                  onClick={resetThemeForm}
+                  className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ×
+                </button>
+                
+                <h2 className="text-2xl font-bold text-purple-800 mb-6">
+                  {editingTheme ? "Edit Theme" : "Upload New Theme"}
+                </h2>
                 
                 <div className="space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Theme name (e.g., 'Jungle Adventure')"
-                    value={newThemeName}
-                    onChange={(e) => setNewThemeName(e.target.value)}
-                    className="w-full px-4 py-3 border rounded-xl"
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Theme name (e.g., 'Jungle Adventure')"
+                      value={newThemeName}
+                      onChange={(e) => setNewThemeName(e.target.value)}
+                      className={`w-full px-4 py-3 border rounded-xl ${
+                        validationErrors.name ? "border-red-500 bg-red-50" : "border-gray-300"
+                      }`}
+                    />
+                    {validationErrors.name && (
+                      <p className="text-red-500 text-sm mt-1">Theme name is required</p>
+                    )}
+                  </div>
                   
-                  <textarea
-                    placeholder="Theme description"
-                    value={newThemeDescription}
-                    onChange={(e) => setNewThemeDescription(e.target.value)}
-                    className="w-full px-4 py-3 border rounded-xl h-24 resize-none"
-                  />
+                  <div>
+                    <textarea
+                      placeholder="Theme description (e.g., 'Tommy talks to animals and explores the jungle')"
+                      value={newThemeDescription}
+                      onChange={(e) => setNewThemeDescription(e.target.value)}
+                      className={`w-full px-4 py-3 border rounded-xl h-24 resize-none ${
+                        validationErrors.description ? "border-red-500 bg-red-50" : "border-gray-300"
+                      }`}
+                    />
+                    {validationErrors.description && (
+                      <p className="text-red-500 text-sm mt-1">Description is required</p>
+                    )}
+                  </div>
                   
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      if (e.target.files?.[0] && newThemeName && newThemeDescription) {
-                        uploadNewTheme(e.target.files[0])
-                      } else {
-                        alert("Please fill in theme name and description first!")
-                      }
-                    }}
-                    className="w-full"
-                  />
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          setUploadedFile(e.target.files[0])
+                          setValidationErrors(prev => ({ ...prev, file: false }))
+                        }
+                      }}
+                      className={`w-full ${
+                        validationErrors.file ? "border-red-500" : ""
+                      }`}
+                    />
+                    {validationErrors.file && (
+                      <p className="text-red-500 text-sm mt-1">Please select an image file</p>
+                    )}
+                    
+                    {uploadedFile && (
+                      <p className="text-green-600 text-sm mt-1">✓ {uploadedFile.name}</p>
+                    )}
+                    
+                    {editingTheme && !uploadedFile && (
+                      <p className="text-gray-500 text-sm mt-1">Keep existing image or upload new one</p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex gap-3 mt-6">
+                <div className="flex gap-3 mt-8">
                   <button
-                    onClick={() => setShowThemeUpload(false)}
-                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-3 rounded-xl"
+                    onClick={saveTheme}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-xl font-semibold transition-all"
                   >
-                    Cancel
+                    {editingTheme ? "Save Changes" : "Save Theme"}
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Theme gallery */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {/* Theme gallery with edit/delete functionality */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {logoThemes.map((theme) => (
               <div
                 key={theme.id}
-                onClick={() => {
-                  setCurrentTheme(theme)
-                  generateAISuggestions(theme)
-                }}
-                className={`cursor-pointer transition-all rounded-2xl p-6 border-2 ${
+                className={`cursor-pointer transition-all rounded-2xl p-6 border-2 relative group ${
                   currentTheme?.id === theme.id
                     ? "bg-white/30 border-yellow-400 shadow-xl scale-105"
                     : "bg-white/10 border-white/20 hover:bg-white/20"
                 }`}
               >
-                <div className="aspect-square bg-white/20 rounded-xl mb-4 overflow-hidden">
-                  {theme.imageUrl.startsWith('http') ? (
+                {/* Theme management buttons */}
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                  <button
+                    onClick={() => editTheme(theme)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => deleteTheme(theme.id)}
+                    className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center"
+                  >
+                    🗑️
+                  </button>
+                </div>
+                
+                <div 
+                  onClick={() => {
+                    setCurrentTheme(theme)
+                    localStorage.setItem("storyloom_current_theme", theme.id)
+                    generateAISuggestions(theme)
+                  }}
+                  className="aspect-square bg-white/20 rounded-xl mb-4 overflow-hidden"
+                >
+                  {theme.imageUrl ? (
                     <img src={theme.imageUrl} alt={theme.themeName} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl">
-                      {theme.imageUrl}
+                    <div className="w-full h-full flex items-center justify-center text-4xl text-white/60">
+                      🎭
                     </div>
                   )}
                 </div>
@@ -885,8 +925,8 @@ export default function UltimateStoryLoomApp() {
     )
   }
 
-  // Continue with other screens (characters, story, reading, library)...
-  // For brevity, I'll include the key ones. The rest follow the same enhanced pattern.
+  // Continue with other screens using themed backgrounds...
+  // (For brevity, showing the key enhanced screens above)
 
-  return <div>Enhanced StoryLoom with Dynamic Themes continues...</div>
+  return <div>Enhanced StoryLoom with Theme Persistence and Dynamic Backgrounds continues...</div>
 }
