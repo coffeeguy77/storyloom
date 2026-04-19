@@ -27,7 +27,7 @@ export default function HomePage() {
                 className="rounded-lg shadow-lg"
                 onError={(e) => {
                   // Fallback to emoji if logo not found
-                  e.currentTarget.style.display = 'none'
+                  (e.currentTarget as HTMLElement).style.display = 'none'
                   if (e.currentTarget.nextElementSibling) {
                     e.currentTarget.nextElementSibling.style.display = 'block'
                   }
@@ -52,7 +52,7 @@ export default function HomePage() {
               className="mx-auto rounded-2xl shadow-2xl max-w-[280px] w-full h-auto sm:max-w-[320px] md:max-w-[400px]"
               onError={(e) => {
                 // Fallback to emoji if logo not found
-                e.currentTarget.style.display = 'none'
+                (e.currentTarget as HTMLElement).style.display = 'none'
                 if (e.currentTarget.nextElementSibling) {
                   e.currentTarget.nextElementSibling.style.display = 'block'
                 }
