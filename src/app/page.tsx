@@ -98,7 +98,7 @@ try {
 const mainCharacter = characters.find(c => c.name.trim()) || { name: ‘Alex’, id: ‘default’ }
 
 ```
-  console.log('🎯 Generating single-format story:', {
+  console.log('Generating single-format story:', {
     idea: storyDescription,
     character: mainCharacter.name
   })
@@ -125,7 +125,7 @@ const mainCharacter = characters.find(c => c.name.trim()) || { name: ‘Alex’,
   }
   
   const apiStory = await response.json()
-  console.log('✅ Single-format story generated:', apiStory)
+  console.log('Single-format story generated:', apiStory)
   
   if (apiStory.success && apiStory.fullText) {
     const story: Story = {
@@ -167,7 +167,7 @@ if (!currentStory) return
 ```
 setIsGeneratingCover(true)
 try {
-  console.log('🎨 Generating cover image with prompt:', currentStory.coverImagePrompt)
+  console.log('Generating cover image with prompt:', currentStory.coverImagePrompt)
   
   const response = await fetch('/api/generate-image', {
     method: 'POST',
@@ -182,7 +182,7 @@ try {
   }
   
   const result = await response.json()
-  console.log('✅ Cover image generated:', result)
+  console.log('Cover image generated:', result)
   
   if (result.success && result.imageUrl) {
     const updatedStory = {
@@ -233,7 +233,7 @@ StoryLoom
 </h1>
 </div>
 <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto leading-relaxed">
-AI-Powered Children's Storybook Generator
+AI-Powered Children’s Storybook Generator
 </p>
 </div>
 </div>
@@ -317,13 +317,13 @@ return (
                 htmlFor={`upload-${character.id}`}
                 className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg text-center cursor-pointer hover:bg-blue-600 text-sm"
               >
-                📷 Upload Image
+                Upload Image
               </label>
               <button
                 onClick={() => removeCharacter(character.id)}
                 className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600"
               >
-                ✕
+                Remove
               </button>
             </div>
           </div>
@@ -392,7 +392,7 @@ return (
             disabled={isGeneratingStory}
             className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-8 py-3 rounded-xl font-bold text-lg hover:from-yellow-500 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isGeneratingStory ? '🎨 Creating Your Story...' : '✨ Generate Story with AI'}
+            {isGeneratingStory ? 'Creating Your Story...' : 'Generate Story with AI'}
           </button>
         </div>
       </div>
@@ -408,7 +408,7 @@ return (
 <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
 <div className="max-w-4xl mx-auto px-4">
 <div className="text-center mb-8">
-<h1 className="text-4xl font-bold text-white mb-2">📖 Your Story</h1>
+<h1 className="text-4xl font-bold text-white mb-2">Your Story</h1>
 <p className="text-xl text-white/80">Beautiful story, single amazing illustration</p>
 </div>
 
@@ -448,7 +448,7 @@ return (
                   Generating Cover...
                 </div>
               ) : (
-                '🎨 Generate AI Cover Art'
+                'Generate AI Cover Art'
               )}
             </button>
           </div>
@@ -466,7 +466,7 @@ return (
         {/* Story Info */}
         <div className="mt-8 pt-6 border-t border-gray-200 text-center text-gray-600">
           <p className="text-sm">
-            📝 {currentStory.wordCount} words • Created {new Date(currentStory.createdAt).toLocaleDateString()}
+            {currentStory.wordCount} words • Created {new Date(currentStory.createdAt).toLocaleDateString()}
           </p>
         </div>
       </div>
@@ -482,7 +482,7 @@ return (
           onClick={() => setCurrentStep('library')}
           className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700"
         >
-          📚 View Library
+          View Library
         </button>
       </div>
     </div>
@@ -497,12 +497,12 @@ return (
 <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
 <div className="max-w-6xl mx-auto px-4">
 <div className="flex items-center justify-between mb-8">
-<h1 className="text-4xl font-bold text-white">📚 Story Library ({savedStories.length})</h1>
+<h1 className="text-4xl font-bold text-white">Story Library ({savedStories.length})</h1>
 <button
 onClick={() => setCurrentStep(‘start’)}
 className=“bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700”
 >
-➕ Create New Story
++ Create New Story
 </button>
 </div>
 
