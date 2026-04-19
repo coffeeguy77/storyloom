@@ -20,6 +20,7 @@ interface StoryResponse {
   id: string
   title: string
   pages: StoryPage[]
+  coverImagePrompt: string
   metadata: { ageGroup: string; tone: string; length: string; artStyle: string; character?: any; createdAt: string }
   success: boolean
 }
@@ -43,45 +44,32 @@ export async function POST(request: NextRequest) {
     }
 
     const characterName = character?.name || 'Alex'
-    const pageCount = length === 'short' ? 4 : length === 'medium' ? 6 : 8
+    const characterRole = character?.role || ''
+    const characterDescription = character?.description || ''
     
-    console.log('🎯 Generating story with OpenAI:', { idea, characterName, pageCount, tone })
+    console.log('🎯 Generating story with OpenAI for:', { idea, characterName, characterRole, ageGroup, tone, length })
 
-    // Create a comprehensive prompt for OpenAI to generate a unique children's story
-    const storyPrompt = `Write a ${pageCount}-page children's story for ages ${ageGroup} with a ${tone} tone about: "${idea}"
+    // Build the character context
+    let characterContext = characterName
+    if (characterRole) characterContext += ` the ${characterRole}`
+    if (characterDescription) characterContext += ` (${characterDescription})`
 
-Main character: ${characterName}${character?.description ? ` (${character.description})` : ''}${character?.role ? ` who is ${character.role}` : ''}
+    // Create the primary prompt exactly as requested
+    const primaryPrompt = `create a children's story about ${characterContext} and ${idea}`
 
-Requirements:
-- Create a unique, engaging story that brings "${idea}" to life in an imaginative way
-- Each page should have 3-4 sentences (about 60-100 words per page)
-- Make it age-appropriate for ${ageGroup} year olds
-- Keep the ${tone} tone throughout
-- Create genuine character development and story progression
-- Include vivid descriptions that would work well for illustrations
-- NO repetitive phrases or template language
-- Make each page advance the plot meaningfully
-- End with a satisfying conclusion
+    // Enhanced system prompt for intelligent story creation
+    const systemPrompt = `You are a master children's book author who creates engaging, unique stories that capture children's imagination. You write stories that:
 
-Story structure:
-- Page 1: Introduce ${characterName} and set up the adventure related to "${idea}"
-- Middle pages: Build tension, challenges, discoveries, and character growth
-- Final page: Satisfying resolution where ${characterName} succeeds/learns/grows
+- Are age-appropriate for ${ageGroup} year olds
+- Have a ${tone} tone throughout
+- Create natural narrative flow with clear story progression
+- Include vivid descriptions perfect for illustrations
+- Have satisfying resolutions where characters learn and grow
+- Use language that's engaging but accessible for the target age
 
-Please format your response as JSON with this exact structure:
-{
-  "title": "Creative title that captures the essence of the story",
-  "pages": [
-    {
-      "pageNumber": 1,
-      "text": "Engaging opening text that introduces ${characterName} and the world of ${idea}",
-      "imagePrompt": "Detailed description for a children's book illustration showing the scene"
-    },
-    ... (continue for all ${pageCount} pages)
-  ]
-}
+CRITICAL: You MUST structure your response with clear page breaks using "--- PAGE BREAK ---" markers. Each page should contain 2-4 paragraphs of substantial content (60-100 words per page).
 
-Make sure each page's text is substantial (3-4 full sentences) and each imagePrompt vividly describes what should be illustrated for that page.`
+Format your response as a complete story with natural page breaks, not JSON. Write engaging narrative prose with clear paragraph structure.`
 
     try {
       console.log('🚀 Calling OpenAI GPT-4 for story generation...')
@@ -97,16 +85,15 @@ Make sure each page's text is substantial (3-4 full sentences) and each imagePro
           messages: [
             {
               role: 'system',
-              content: 'You are a master children\'s book author who creates engaging, unique stories that capture children\'s imagination. You never use template language or repetitive phrases. Each story you write is fresh, creative, and perfectly tailored to the child\'s request.'
+              content: systemPrompt
             },
             {
               role: 'user',
-              content: storyPrompt
+              content: primaryPrompt
             }
           ],
           max_tokens: 2000,
-          temperature: 0.8, // Higher creativity
-          response_format: { type: 'json_object' }
+          temperature: 0.8
         }),
       })
 
@@ -120,37 +107,118 @@ Make sure each page's text is substantial (3-4 full sentences) and each imagePro
       console.log('✅ OpenAI story generation response received')
       
       if (openaiData.choices?.[0]?.message?.content) {
-        try {
-          const storyData = JSON.parse(openaiData.choices[0].message.content)
-          
-          // Validate the story structure
-          if (!storyData.title || !storyData.pages || !Array.isArray(storyData.pages)) {
-            throw new Error('Invalid story structure from OpenAI')
-          }
+        const storyContent = openaiData.choices[0].message.content.trim()
+        console.log('📖 Raw story content received from OpenAI')
 
-          // Enhance image prompts for better DALL-E generation
-          const enhancedPages: StoryPage[] = storyData.pages.map((page: any, index: number) => ({
-            pageNumber: page.pageNumber || index + 1,
-            text: page.text,
-            imagePrompt: `Children's storybook illustration: ${page.imagePrompt}. Style: Colorful, whimsical, child-friendly ${artStyle} illustration with warm lighting and magical atmosphere. Character: ${characterName}. Safe for children, engaging and enchanting.`,
-            imageUrl: `https://source.unsplash.com/800x600/?children,storybook,${encodeURIComponent(idea)},illustration&sig=${index + 1}` // Fallback image
-          }))
-
-          const response: StoryResponse = {
-            id: `story_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-            title: storyData.title,
-            pages: enhancedPages,
-            metadata: { ageGroup, tone, length, artStyle, character: character || null, createdAt: new Date().toISOString() },
-            success: true
-          }
-
-          console.log('🎉 Unique story generated successfully with OpenAI!')
-          return NextResponse.json(response)
-
-        } catch (parseError) {
-          console.error('❌ Failed to parse OpenAI story response:', parseError)
-          throw new Error('Failed to parse story from OpenAI response')
+        // Extract title from the first line or create one
+        const lines = storyContent.split('\n').filter(line => line.trim())
+        let title = lines[0]
+        
+        // If first line looks like a title (short, no period), use it; otherwise create one
+        if (title.length > 50 || title.includes('.') || title.includes(',')) {
+          title = `${characterName} and the ${idea.split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          ).join(' ')}`
+        } else {
+          // Remove title from content
+          lines.shift()
         }
+
+        // Clean title
+        title = title.replace(/^(Title:|Chapter \d+:?|\d+\.)\s*/i, '').trim()
+
+        // Split content into pages intelligently
+        let fullContent = lines.join('\n')
+        
+        // Try to split on page break markers first
+        let pageTexts: string[] = []
+        if (fullContent.includes('--- PAGE BREAK ---') || fullContent.includes('PAGE BREAK')) {
+          pageTexts = fullContent.split(/---\s*PAGE\s*BREAK\s*---|PAGE\s*BREAK/i)
+            .map(text => text.trim())
+            .filter(text => text.length > 0)
+        } else {
+          // Smart paragraph-based splitting
+          const paragraphs = fullContent.split('\n\n').filter(p => p.trim().length > 0)
+          
+          // Group paragraphs into pages based on length and natural breaks
+          const targetPages = length === 'short' ? 4 : length === 'medium' ? 6 : 8
+          const paragraphsPerPage = Math.max(1, Math.ceil(paragraphs.length / targetPages))
+          
+          pageTexts = []
+          for (let i = 0; i < paragraphs.length; i += paragraphsPerPage) {
+            const pageContent = paragraphs.slice(i, i + paragraphsPerPage).join('\n\n')
+            if (pageContent.trim()) {
+              pageTexts.push(pageContent.trim())
+            }
+          }
+        }
+
+        // Ensure we have the right number of pages
+        const targetPageCount = length === 'short' ? 4 : length === 'medium' ? 6 : 8
+        
+        if (pageTexts.length < targetPageCount) {
+          // If we have too few pages, split longer pages
+          const newPageTexts: string[] = []
+          for (const pageText of pageTexts) {
+            const sentences = pageText.split(/(?<=[.!?])\s+/)
+            if (sentences.length > 4 && newPageTexts.length < targetPageCount - 1) {
+              const mid = Math.ceil(sentences.length / 2)
+              newPageTexts.push(sentences.slice(0, mid).join(' '))
+              newPageTexts.push(sentences.slice(mid).join(' '))
+            } else {
+              newPageTexts.push(pageText)
+            }
+          }
+          pageTexts = newPageTexts.slice(0, targetPageCount)
+        } else if (pageTexts.length > targetPageCount) {
+          // If we have too many pages, combine shorter ones
+          pageTexts = pageTexts.slice(0, targetPageCount)
+        }
+
+        // Create story pages with enhanced image prompts
+        const pages: StoryPage[] = pageTexts.map((pageText, index) => {
+          // Create intelligent image prompt based on page content
+          const pageNumber = index + 1
+          const isFirstPage = pageNumber === 1
+          const isLastPage = pageNumber === pageTexts.length
+          
+          // Extract key visual elements from the page text
+          const imagePrompt = createImagePrompt(pageText, characterName, characterRole, artStyle, isFirstPage, isLastPage)
+          
+          return {
+            pageNumber,
+            text: pageText,
+            imagePrompt,
+            imageUrl: `https://source.unsplash.com/800x600/?children,storybook,${encodeURIComponent(idea)},illustration&sig=${pageNumber}`
+          }
+        })
+
+        // Create cover art prompt
+        const coverImagePrompt = `Children's storybook cover illustration: ${title}. Features ${characterName}${characterRole ? ` the ${characterRole}` : ''} in a scene related to ${idea}. Style: Colorful, whimsical, child-friendly ${artStyle} illustration with title space at top. Book cover design, professional children's literature artwork, engaging and magical.`
+
+        const response: StoryResponse = {
+          id: `story_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          title: title,
+          pages: pages,
+          coverImagePrompt: coverImagePrompt,
+          metadata: { 
+            ageGroup, 
+            tone, 
+            length, 
+            artStyle, 
+            character: character || null, 
+            createdAt: new Date().toISOString() 
+          },
+          success: true
+        }
+
+        console.log('🎉 Intelligent story with natural page breaks generated successfully!')
+        console.log(`📚 Title: ${title}`)
+        console.log(`📄 Pages: ${pages.length}`)
+        console.log(`📝 Average words per page: ${pages.reduce((sum, p) => sum + p.text.split(' ').length, 0) / pages.length}`)
+        
+        return NextResponse.json(response)
+
       } else {
         console.error('❌ Invalid OpenAI response format:', openaiData)
         throw new Error('Invalid response format from OpenAI API')
@@ -158,65 +226,7 @@ Make sure each page's text is substantial (3-4 full sentences) and each imagePro
 
     } catch (openaiError) {
       console.error('❌ OpenAI story generation failed:', openaiError)
-      
-      // Fallback to a basic but improved story structure (better than the old templates)
-      console.log('🔄 Using improved fallback story generation...')
-      
-      const fallbackTitle = `${characterName} and the ${idea.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}`
-      
-      const fallbackPages: StoryPage[] = []
-      
-      // Create more natural fallback content
-      const storyElements = {
-        settings: ['enchanted forest', 'magical kingdom', 'mysterious castle', 'hidden valley', 'ancient library', 'floating island', 'secret garden', 'crystal cave'],
-        challenges: ['solved an ancient puzzle', 'helped a lost creature', 'discovered a hidden truth', 'overcame their fears', 'learned a valuable lesson', 'made a new friend'],
-        discoveries: ['magical powers within themselves', 'the importance of kindness', 'courage they never knew they had', 'that friendship conquers all', 'the magic of believing']
-      }
-      
-      const randomSetting = storyElements.settings[Math.floor(Math.random() * storyElements.settings.length)]
-      const randomChallenge = storyElements.challenges[Math.floor(Math.random() * storyElements.challenges.length)]
-      const randomDiscovery = storyElements.discoveries[Math.floor(Math.random() * storyElements.discoveries.length)]
-      
-      for (let i = 1; i <= pageCount; i++) {
-        let pageText = ''
-        let imagePrompt = ''
-        
-        if (i === 1) {
-          pageText = `${characterName} lived in a world where ${idea} was possible, but no one believed it could be real. One day, while exploring the ${randomSetting}, ${characterName} discovered something extraordinary that would change everything. The adventure was about to begin, and ${characterName} felt both excited and nervous about what lay ahead.`
-          imagePrompt = `${characterName} discovering something amazing related to ${idea} in ${randomSetting}`
-        } else if (i === pageCount) {
-          pageText = `In the end, ${characterName} ${randomChallenge} and discovered ${randomDiscovery}. The ${idea} had taught ${characterName} something wonderful about the world and about themselves. As ${characterName} returned home, they knew this was just the beginning of many more amazing adventures to come.`
-          imagePrompt = `${characterName} celebrating their success with ${idea}, happy ending scene`
-        } else {
-          const midStoryTexts = [
-            `The ${idea} led ${characterName} to meet interesting characters who each had their own stories to tell. Some were helpful, others were mysterious, but all of them taught ${characterName} something important. Together, they faced challenges that seemed impossible at first.`,
-            `${characterName} learned that ${idea} required courage, creativity, and kindness. There were moments when giving up seemed easier, but ${characterName} remembered why this journey mattered. With determination, they pressed on toward their goal.`,
-            `Strange and wonderful things began happening as ${characterName} grew more confident. The ${idea} revealed secrets that had been hidden for ages. ${characterName} realized they had abilities they never knew existed.`,
-            `The biggest challenge yet appeared before ${characterName}. It would take everything they had learned about ${idea} to succeed. But ${characterName} was no longer the same person who had started this journey - they had grown stronger and wiser.`
-          ]
-          
-          pageText = midStoryTexts[Math.min(i - 2, midStoryTexts.length - 1)]
-          imagePrompt = `${characterName} on their adventure with ${idea}, ${tone} children's book scene`
-        }
-        
-        fallbackPages.push({
-          pageNumber: i,
-          text: pageText,
-          imagePrompt: `Children's storybook illustration: ${imagePrompt}. Style: Colorful, whimsical, child-friendly ${artStyle} illustration with warm lighting. Character: ${characterName}. Safe for children, engaging and enchanting.`,
-          imageUrl: `https://source.unsplash.com/800x600/?children,storybook,${encodeURIComponent(idea)},illustration&sig=${i}`
-        })
-      }
-
-      const response: StoryResponse = {
-        id: `story_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-        title: fallbackTitle,
-        pages: fallbackPages,
-        metadata: { ageGroup, tone, length, artStyle, character: character || null, createdAt: new Date().toISOString() },
-        success: true
-      }
-
-      console.log('✅ Improved fallback story generated')
-      return NextResponse.json(response)
+      throw openaiError // No fallback - force the issue to be fixed
     }
 
   } catch (error) {
@@ -228,12 +238,64 @@ Make sure each page's text is substantial (3-4 full sentences) and each imagePro
   }
 }
 
+// Helper function to create intelligent image prompts based on page content
+function createImagePrompt(pageText: string, characterName: string, characterRole: string, artStyle: string, isFirstPage: boolean, isLastPage: boolean): string {
+  // Extract key visual elements from the text
+  const lowercaseText = pageText.toLowerCase()
+  
+  // Look for actions, settings, emotions, and objects
+  const actions = ['walking', 'running', 'flying', 'climbing', 'jumping', 'dancing', 'singing', 'laughing', 'crying', 'sleeping', 'waking', 'eating', 'playing', 'working', 'building', 'discovering', 'exploring', 'hiding', 'searching']
+  const settings = ['forest', 'garden', 'house', 'farm', 'castle', 'beach', 'mountain', 'field', 'barn', 'kitchen', 'bedroom', 'yard', 'village', 'city', 'school', 'park']
+  const emotions = ['happy', 'excited', 'surprised', 'worried', 'scared', 'curious', 'proud', 'sad', 'angry', 'confused', 'determined']
+  
+  let sceneElements: string[] = []
+  
+  // Add character
+  sceneElements.push(characterName + (characterRole ? ` the ${characterRole}` : ''))
+  
+  // Find actions in text
+  const foundActions = actions.filter(action => lowercaseText.includes(action))
+  if (foundActions.length > 0) {
+    sceneElements.push(foundActions[0])
+  }
+  
+  // Find settings in text
+  const foundSettings = settings.filter(setting => lowercaseText.includes(setting))
+  if (foundSettings.length > 0) {
+    sceneElements.push(`in ${foundSettings[0]}`)
+  }
+  
+  // Find emotions in text
+  const foundEmotions = emotions.filter(emotion => lowercaseText.includes(emotion))
+  if (foundEmotions.length > 0) {
+    sceneElements.push(`feeling ${foundEmotions[0]}`)
+  }
+  
+  // Special handling for first and last pages
+  if (isFirstPage) {
+    sceneElements.push('story beginning')
+  } else if (isLastPage) {
+    sceneElements.push('happy ending')
+  }
+  
+  const sceneDescription = sceneElements.join(', ')
+  
+  return `Children's storybook illustration: ${sceneDescription}. Style: Colorful, whimsical, child-friendly ${artStyle} illustration with warm lighting and magical atmosphere. Safe for children, engaging and enchanting, professional children's book artwork.`
+}
+
 // Health check endpoint
 export async function GET() {
   return NextResponse.json({
-    message: 'OpenAI-Powered StoryLoom API - Unique Stories Every Time!',
-    version: '3.0.0',
-    features: ['OpenAI GPT-4 story generation', 'Unique creative content', 'No more template garbage', 'Rich 3-4 sentence pages'],
-    provider: process.env.OPENAI_API_KEY ? 'OpenAI GPT-4' : 'Improved fallback'
+    message: 'OpenAI-Powered StoryLoom API - Real Stories, Intelligent Pages!',
+    version: '4.0.0',
+    features: [
+      'OpenAI GPT-4 story generation',
+      'Intelligent page breaks based on content',
+      'Natural paragraph structure',
+      'Smart image prompt generation',
+      'Cover art creation',
+      'No fallback templates'
+    ],
+    provider: process.env.OPENAI_API_KEY ? 'OpenAI GPT-4' : 'API key required'
   })
 }
