@@ -110,13 +110,13 @@ Format your response as a complete story with natural page breaks, not JSON. Wri
         const storyContent = openaiData.choices[0].message.content.trim()
         console.log('📖 Raw story content received from OpenAI')
 
-        // Extract title from the first line or create one
-        const lines = storyContent.split('\n').filter(line => line.trim())
+        // Extract title from the first line or create one - FIXED: Added type annotation
+        const lines = storyContent.split('\n').filter((line: string) => line.trim())
         let title = lines[0]
         
         // If first line looks like a title (short, no period), use it; otherwise create one
         if (title.length > 50 || title.includes('.') || title.includes(',')) {
-          title = `${characterName} and the ${idea.split(' ').map(word => 
+          title = `${characterName} and the ${idea.split(' ').map((word: string) => 
             word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
           ).join(' ')}`
         } else {
@@ -134,11 +134,11 @@ Format your response as a complete story with natural page breaks, not JSON. Wri
         let pageTexts: string[] = []
         if (fullContent.includes('--- PAGE BREAK ---') || fullContent.includes('PAGE BREAK')) {
           pageTexts = fullContent.split(/---\s*PAGE\s*BREAK\s*---|PAGE\s*BREAK/i)
-            .map(text => text.trim())
-            .filter(text => text.length > 0)
+            .map((text: string) => text.trim())
+            .filter((text: string) => text.length > 0)
         } else {
           // Smart paragraph-based splitting
-          const paragraphs = fullContent.split('\n\n').filter(p => p.trim().length > 0)
+          const paragraphs = fullContent.split('\n\n').filter((p: string) => p.trim().length > 0)
           
           // Group paragraphs into pages based on length and natural breaks
           const targetPages = length === 'short' ? 4 : length === 'medium' ? 6 : 8
@@ -176,7 +176,7 @@ Format your response as a complete story with natural page breaks, not JSON. Wri
         }
 
         // Create story pages with enhanced image prompts
-        const pages: StoryPage[] = pageTexts.map((pageText, index) => {
+        const pages: StoryPage[] = pageTexts.map((pageText: string, index: number) => {
           // Create intelligent image prompt based on page content
           const pageNumber = index + 1
           const isFirstPage = pageNumber === 1
@@ -215,7 +215,7 @@ Format your response as a complete story with natural page breaks, not JSON. Wri
         console.log('🎉 Intelligent story with natural page breaks generated successfully!')
         console.log(`📚 Title: ${title}`)
         console.log(`📄 Pages: ${pages.length}`)
-        console.log(`📝 Average words per page: ${pages.reduce((sum, p) => sum + p.text.split(' ').length, 0) / pages.length}`)
+        console.log(`📝 Average words per page: ${pages.reduce((sum: number, p: StoryPage) => sum + p.text.split(' ').length, 0) / pages.length}`)
         
         return NextResponse.json(response)
 
@@ -254,19 +254,19 @@ function createImagePrompt(pageText: string, characterName: string, characterRol
   sceneElements.push(characterName + (characterRole ? ` the ${characterRole}` : ''))
   
   // Find actions in text
-  const foundActions = actions.filter(action => lowercaseText.includes(action))
+  const foundActions = actions.filter((action: string) => lowercaseText.includes(action))
   if (foundActions.length > 0) {
     sceneElements.push(foundActions[0])
   }
   
   // Find settings in text
-  const foundSettings = settings.filter(setting => lowercaseText.includes(setting))
+  const foundSettings = settings.filter((setting: string) => lowercaseText.includes(setting))
   if (foundSettings.length > 0) {
     sceneElements.push(`in ${foundSettings[0]}`)
   }
   
   // Find emotions in text
-  const foundEmotions = emotions.filter(emotion => lowercaseText.includes(emotion))
+  const foundEmotions = emotions.filter((emotion: string) => lowercaseText.includes(emotion))
   if (foundEmotions.length > 0) {
     sceneElements.push(`feeling ${foundEmotions[0]}`)
   }
