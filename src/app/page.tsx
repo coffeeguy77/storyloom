@@ -22,6 +22,7 @@ interface LogoTheme {
   backgroundColor: string
   backgroundType: "gradient" | "image"
   backgroundValue: string
+  aspectRatio: "3:2" // Tommy's logos are 1344x896 (3:2 ratio)
   uploadedAt: string
 }
 
@@ -75,6 +76,26 @@ export default function EnhancedStoryLoomApp() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [validationErrors, setValidationErrors] = useState<{name?: boolean, description?: boolean, file?: boolean}>({})
 
+  // Image optimization for 3:2 ratio logos
+  const getOptimizedLogoStyle = (imageUrl: string) => {
+    return {
+      width: '240px',  // 3:2 ratio maintained
+      height: '160px',
+      objectFit: 'contain' as const,  // Preserves aspect ratio, no cropping
+      background: 'transparent'
+    }
+  }
+
+  const getThemeGalleryLogoStyle = () => {
+    return {
+      width: '100%',
+      aspectRatio: '3/2',  // CSS aspect ratio for 3:2
+      objectFit: 'contain' as const,
+      background: 'rgba(255,255,255,0.1)',
+      borderRadius: '12px'
+    }
+  }
+
   // Initialize app
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -103,7 +124,6 @@ export default function EnhancedStoryLoomApp() {
         const themes = JSON.parse(savedThemesData)
         setLogoThemes(themes)
         
-        // Check for persisted current theme
         const currentThemeId = localStorage.getItem("storyloom_current_theme")
         if (currentThemeId) {
           const persistedTheme = themes.find((t: LogoTheme) => t.id === currentThemeId)
@@ -137,6 +157,7 @@ export default function EnhancedStoryLoomApp() {
         backgroundColor: "#8B5CF6",
         backgroundType: "gradient",
         backgroundValue: "from-purple-400 via-pink-500 to-red-500",
+        aspectRatio: "3:2",
         uploadedAt: new Date().toISOString()
       },
       {
@@ -152,6 +173,7 @@ export default function EnhancedStoryLoomApp() {
         backgroundColor: "#1E1B4B",
         backgroundType: "gradient", 
         backgroundValue: "from-indigo-900 via-purple-900 to-pink-900",
+        aspectRatio: "3:2",
         uploadedAt: new Date().toISOString()
       },
       {
@@ -167,6 +189,7 @@ export default function EnhancedStoryLoomApp() {
         backgroundColor: "#1E40AF",
         backgroundType: "gradient",
         backgroundValue: "from-blue-600 via-cyan-500 to-teal-400",
+        aspectRatio: "3:2",
         uploadedAt: new Date().toISOString()
       }
     ]
@@ -183,7 +206,7 @@ export default function EnhancedStoryLoomApp() {
     if (!theme) return "from-purple-400 via-pink-500 to-red-500"
     
     if (theme.backgroundType === "image") {
-      return `from-purple-400/80 via-pink-500/80 to-red-500/80` // Overlay for readability
+      return `from-purple-400/80 via-pink-500/80 to-red-500/80`
     }
     
     return theme.backgroundValue || "from-purple-400 via-pink-500 to-red-500"
@@ -253,9 +276,36 @@ export default function EnhancedStoryLoomApp() {
     return !Object.values(errors).some(Boolean)
   }
 
-  const saveTheme = () => {
+  // Enhanced image validation for 3:2 ratio
+  const validateImageAspectRatio = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const aspectRatio = img.width / img.height
+        const is3to2 = Math.abs(aspectRatio - 1.5) < 0.1 // 1.5 = 3/2, with tolerance
+        
+        if (!is3to2) {
+          alert(`Please upload an image with 3:2 aspect ratio (like 1344×896 pixels). Your image is ${img.width}×${img.height} (${aspectRatio.toFixed(2)}:1).`)
+        }
+        
+        resolve(is3to2)
+      }
+      img.onerror = () => resolve(false)
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
+  const saveTheme = async () => {
     if (!validateThemeForm()) {
       return
+    }
+
+    // Validate aspect ratio for new uploads
+    if (uploadedFile && !editingTheme) {
+      const isValidRatio = await validateImageAspectRatio(uploadedFile)
+      if (!isValidRatio) {
+        return
+      }
     }
 
     if (uploadedFile) {
@@ -276,7 +326,6 @@ export default function EnhancedStoryLoomApp() {
 
   const saveThemeData = (imageUrl: string) => {
     try {
-      // Create background based on theme name
       let backgroundValue = "from-purple-400 via-pink-500 to-red-500"
       let backgroundType: "gradient" | "image" = "gradient"
       
@@ -289,15 +338,20 @@ export default function EnhancedStoryLoomApp() {
         backgroundValue = "from-blue-600 via-cyan-500 to-teal-400"
       } else if (themeName.includes("desert")) {
         backgroundValue = "from-yellow-600 via-orange-500 to-red-400"
-      } else if (themeName.includes("winter")) {
+      } else if (themeName.includes("winter") || themeName.includes("snow")) {
         backgroundValue = "from-blue-200 via-indigo-300 to-purple-400"
+      } else if (themeName.includes("pirate") || themeName.includes("treasure")) {
+        backgroundValue = "from-amber-600 via-orange-500 to-red-600"
+      } else if (themeName.includes("dinosaur") || themeName.includes("prehistoric")) {
+        backgroundValue = "from-green-700 via-amber-600 to-orange-500"
       }
 
       const themeData: LogoTheme = editingTheme ? {
         ...editingTheme,
         themeName: newThemeName,
         description: newThemeDescription,
-        imageUrl
+        imageUrl,
+        aspectRatio: "3:2"
       } : {
         id: Date.now().toString(),
         imageUrl,
@@ -312,6 +366,7 @@ export default function EnhancedStoryLoomApp() {
         backgroundColor: "#8B5CF6",
         backgroundType,
         backgroundValue,
+        aspectRatio: "3:2",
         uploadedAt: new Date().toISOString()
       }
       
@@ -325,12 +380,10 @@ export default function EnhancedStoryLoomApp() {
       setLogoThemes(updated)
       saveToStorage("storyloom_themes", updated)
       
-      // Set as current theme
       setCurrentTheme(themeData)
       localStorage.setItem("storyloom_current_theme", themeData.id)
       generateAISuggestions(themeData)
       
-      // Reset form
       resetThemeForm()
     } catch (error) {
       console.error("Failed to save theme:", error)
@@ -454,7 +507,7 @@ export default function EnhancedStoryLoomApp() {
         id: "theme",
         title: "Setting the Scene", 
         description: `Preparing your ${currentTheme?.themeName || "magical"} adventure...`,
-        emoji: currentTheme?.imageUrl ? "🎭" : "🎭",
+        emoji: "🎭",
         duration: 1500,
         completed: false
       },
@@ -621,7 +674,7 @@ export default function EnhancedStoryLoomApp() {
     }
   }
 
-  // Enhanced start screen with dynamic theming
+  // Enhanced start screen with proper 3:2 logo display
   if (currentStep === "start") {
     const backgroundImage = getThemeBackgroundImage(currentTheme)
     
@@ -641,28 +694,34 @@ export default function EnhancedStoryLoomApp() {
           <div className="absolute bottom-8 left-1/4 w-64 h-64 bg-blue-400/10 rounded-full blur-xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         </div>
 
-        {/* Logo centered at top */}
+        {/* Tommy's Logo - Centered at top with proper 3:2 aspect ratio */}
         <div className="flex justify-center pt-16 pb-8 relative z-10">
           {currentTheme && currentTheme.imageUrl ? (
             <div className="relative group">
               <img
                 src={currentTheme.imageUrl}
                 alt={`StoryLoom - ${currentTheme.themeName}`}
-                className="w-32 h-32 rounded-3xl shadow-2xl object-cover border-4 border-white/40 group-hover:scale-110 transition-transform duration-300"
+                style={getOptimizedLogoStyle(currentTheme.imageUrl)}
+                className="rounded-3xl shadow-2xl border-4 border-white/40 group-hover:scale-105 transition-transform duration-300 cursor-pointer bg-white/10"
                 onClick={() => rotateToRandomTheme()}
               />
               <button
                 onClick={() => rotateToRandomTheme()}
-                className="absolute -top-3 -right-3 bg-yellow-400 hover:bg-yellow-300 text-purple-900 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all"
+                className="absolute -top-3 -right-3 bg-yellow-400 hover:bg-yellow-300 text-purple-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all text-lg"
                 title="Rotate Theme"
               >
                 🔄
               </button>
+              {/* Theme name overlay */}
+              <div className="absolute bottom-2 left-2 right-2 bg-black/60 text-white px-3 py-1 rounded-full text-center text-sm font-semibold">
+                {currentTheme.themeName}
+              </div>
             </div>
           ) : (
             <div className="text-center">
-              <h1 className="text-6xl font-bold text-white drop-shadow-2xl mb-2">StoryLoom</h1>
-              <p className="text-yellow-300 font-semibold">Upload Tommy's logos to get started!</p>
+              <h1 className="text-6xl font-bold text-white drop-shadow-2xl mb-4">StoryLoom</h1>
+              <p className="text-yellow-300 font-semibold text-lg">Upload Tommy's 3:2 logos to get started!</p>
+              <p className="text-white/70 text-sm mt-2">Recommended: 1344×896 pixels with transparent background</p>
             </div>
           )}
         </div>
@@ -725,7 +784,7 @@ export default function EnhancedStoryLoomApp() {
                   Welcome to StoryLoom Magic! ✨
                 </h2>
                 <p className="text-lg text-white/80 mb-6">
-                  Create personalized stories with dynamic themes and AI suggestions
+                  Create personalized stories with Tommy's dynamic themes and AI suggestions
                 </p>
                 
                 <button
@@ -757,7 +816,7 @@ export default function EnhancedStoryLoomApp() {
     )
   }
 
-  // Enhanced theme management screen
+  // Enhanced theme management screen with proper 3:2 display
   if (currentStep === "themes") {
     return (
       <div className={`min-h-screen bg-gradient-to-br ${getThemeBackground(currentTheme)} py-8`}>
@@ -769,7 +828,7 @@ export default function EnhancedStoryLoomApp() {
                 onClick={() => setShowThemeUpload(true)}
                 className="bg-green-500 text-white px-6 py-3 rounded-xl hover:bg-green-600 transition-all font-semibold"
               >
-                + Upload Tommy Logo
+                + Upload Tommy Logo (3:2 ratio)
               </button>
               <button
                 onClick={() => setCurrentStep("start")}
@@ -780,7 +839,7 @@ export default function EnhancedStoryLoomApp() {
             </div>
           </div>
 
-          {/* Enhanced upload modal */}
+          {/* Enhanced upload modal with aspect ratio guidance */}
           {showThemeUpload && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-2xl p-8 max-w-md w-full relative">
@@ -826,6 +885,9 @@ export default function EnhancedStoryLoomApp() {
                   </div>
                   
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tommy Logo (3:2 ratio - like 1344×896 pixels)
+                    </label>
                     <input
                       type="file"
                       accept="image/*"
@@ -839,6 +901,11 @@ export default function EnhancedStoryLoomApp() {
                         validationErrors.file ? "border-red-500" : ""
                       }`}
                     />
+                    
+                    <p className="text-xs text-gray-500 mt-1">
+                      Best quality: PNG with transparent background, 3:2 aspect ratio
+                    </p>
+                    
                     {validationErrors.file && (
                       <p className="text-red-500 text-sm mt-1">Please select an image file</p>
                     )}
@@ -865,7 +932,7 @@ export default function EnhancedStoryLoomApp() {
             </div>
           )}
 
-          {/* Theme gallery with edit/delete functionality */}
+          {/* Theme gallery with proper 3:2 display */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {logoThemes.map((theme) => (
               <div
@@ -898,35 +965,54 @@ export default function EnhancedStoryLoomApp() {
                     localStorage.setItem("storyloom_current_theme", theme.id)
                     generateAISuggestions(theme)
                   }}
-                  className="aspect-square bg-white/20 rounded-xl mb-4 overflow-hidden"
+                  className="mb-4 overflow-hidden rounded-xl bg-white/10"
                 >
                   {theme.imageUrl ? (
-                    <img src={theme.imageUrl} alt={theme.themeName} className="w-full h-full object-cover" />
+                    <img 
+                      src={theme.imageUrl} 
+                      alt={theme.themeName} 
+                      style={getThemeGalleryLogoStyle()}
+                    />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl text-white/60">
+                    <div 
+                      className="w-full flex items-center justify-center text-4xl text-white/60"
+                      style={{ aspectRatio: '3/2' }}
+                    >
                       🎭
                     </div>
                   )}
                 </div>
                 
                 <h3 className="text-white font-bold text-lg">{theme.themeName}</h3>
-                <p className="text-white/70 text-sm">{theme.description}</p>
+                <p className="text-white/70 text-sm line-clamp-2">{theme.description}</p>
                 
                 {currentTheme?.id === theme.id && (
-                  <div className="mt-2 bg-yellow-400 text-purple-900 px-3 py-1 rounded-full text-sm font-medium text-center">
+                  <div className="mt-3 bg-yellow-400 text-purple-900 px-3 py-1 rounded-full text-sm font-medium text-center">
                     ✨ Active Theme
                   </div>
                 )}
               </div>
             ))}
           </div>
+
+          {logoThemes.length === 0 && (
+            <div className="text-center text-white/80 py-16">
+              <div className="text-6xl mb-4">🎨</div>
+              <p className="text-xl mb-4">No Tommy logos uploaded yet!</p>
+              <p className="text-white/60 mb-8">Upload Tommy's artwork with 3:2 aspect ratio (like 1344×896 pixels)</p>
+              <button
+                onClick={() => setShowThemeUpload(true)}
+                className="bg-yellow-400 text-purple-900 px-8 py-4 rounded-xl font-bold text-lg hover:bg-yellow-500"
+              >
+                Upload First Tommy Logo
+              </button>
+            </div>
+          )}
         </div>
       </div>
     )
   }
 
-  // Continue with other screens using themed backgrounds...
-  // (For brevity, showing the key enhanced screens above)
-
-  return <div>Enhanced StoryLoom with Theme Persistence and Dynamic Backgrounds continues...</div>
+  // Continue with other screens...
+  return <div>Enhanced StoryLoom with 3:2 Aspect Ratio Support continues...</div>
 }
