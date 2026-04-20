@@ -1,9 +1,52 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { buildImagePrompt, type ThemeId, type PromptCharacter, type Theme } from "@/lib/imagePrompts"
+import { buildImagePrompt, type ThemeId, type PromptCharacter } from "@/lib/imagePrompts"
 import { buildStoryPrompt, buildStoryTitle } from "@/lib/storyPrompts"
 import { useSupabase } from "@/lib/useSupabase"
+
+// ============================================================================
+// TYPE DEFINITIONS  
+// ============================================================================
+type Theme = {
+  id: string
+  name: string
+  description: string
+  image: string
+  colors: { primary: string; secondary: string }
+}
+
+type LocalCharacter = {
+  id: string
+  name: string
+  isGuest?: boolean
+}
+
+type LocalStory = {
+  id: string
+  title: string
+  content: string
+  imageUrl: string
+  themeId?: ThemeId
+  characters: LocalCharacter[]
+  createdAt: string
+  storyType: "theme" | "manual" | "ai"
+  userPrompt?: string
+  imagePrompt?: string
+}
+
+type Screen = 
+  | "home" 
+  | "characters" 
+  | "builder" 
+  | "manualBuilder" 
+  | "aiBuilder" 
+  | "themeList" 
+  | "prepare" 
+  | "review" 
+  | "generating" 
+  | "reading" 
+  | "library"
 
 // ============================================================================
 // CLOUDINARY ASSETS
@@ -67,41 +110,6 @@ const themes: Theme[] = [
     colors: { primary: "#0ea5e9", secondary: "#10b981" },
   },
 ]
-
-// ============================================================================
-// TYPE DEFINITIONS
-// ============================================================================
-type LocalCharacter = {
-  id: string
-  name: string
-  isGuest?: boolean
-}
-
-type LocalStory = {
-  id: string
-  title: string
-  content: string
-  imageUrl: string
-  themeId?: ThemeId
-  characters: LocalCharacter[]
-  createdAt: string
-  storyType: "theme" | "manual" | "ai"
-  userPrompt?: string
-  imagePrompt?: string
-}
-
-type Screen = 
-  | "home" 
-  | "characters" 
-  | "builder" 
-  | "manualBuilder" 
-  | "aiBuilder" 
-  | "themeList" 
-  | "prepare" 
-  | "review" 
-  | "generating" 
-  | "reading" 
-  | "library"
 
 // ============================================================================
 // UTILITY FUNCTIONS  
