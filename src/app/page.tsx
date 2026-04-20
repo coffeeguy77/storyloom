@@ -296,11 +296,13 @@ function TommyIcon({
 function MagicalCard({ 
   children, 
   className = "",
-  glowColor = "rgba(255, 255, 255, 0.1)"
+  glowColor = "rgba(255, 255, 255, 0.1)",
+  onClick
 }: { 
   children: React.ReactNode
   className?: string 
   glowColor?: string
+  onClick?: () => void
 }) {
   return (
     <div 
@@ -319,6 +321,7 @@ function MagicalCard({
           inset 0 1px 0 rgba(255, 255, 255, 0.2)
         `
       }}
+      onClick={onClick}
     >
       {/* Animated glow effect */}
       <div 
