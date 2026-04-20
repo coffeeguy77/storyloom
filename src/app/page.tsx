@@ -800,7 +800,7 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
           className="text-center"
           glowColor="rgba(255, 107, 107, 0.2)"
         >
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center">
             <TommyIcon iconKey="addFamily" alt="Add Your Family" />
           </div>
           <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
@@ -816,7 +816,7 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
           className="text-center"
           glowColor="rgba(78, 205, 196, 0.2)"
         >
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center">
             <TommyIcon iconKey="createStories" alt="Create Stories" />
           </div>
           <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
@@ -832,7 +832,7 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
           className="text-center"
           glowColor="rgba(199, 125, 255, 0.2)"
         >
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center">
             <TommyIcon iconKey="storyLibrary" alt="Story Library" />
           </div>
           <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
@@ -982,7 +982,7 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
           className="text-center"
           glowColor="rgba(255, 195, 113, 0.2)"
         >
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center">
             <TommyIcon iconKey="buildStory" alt="Build Your Own Story" />
           </div>
           <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
@@ -998,7 +998,7 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
           className="text-center"
           glowColor="rgba(135, 206, 250, 0.2)"
         >
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center">
             <TommyIcon iconKey="aiGenerate" alt="AI Generate a Story" />
           </div>
           <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
@@ -1014,7 +1014,7 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
           className="text-center"
           glowColor="rgba(255, 107, 107, 0.2)"
         >
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center">
             <TommyIcon iconKey="chooseTheme" alt="Choose from a Theme" />
           </div>
           <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
@@ -1630,7 +1630,7 @@ function LibraryScreen({
         </h1>
         
         <MagicalCard className="p-12">
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center">
             <TommyIcon iconKey="storyLibrary" alt="Empty Library" className="opacity-50" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-6">No stories yet!</h2>
