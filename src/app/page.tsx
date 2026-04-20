@@ -410,29 +410,32 @@ export default function StoryLoom() {
   const proceedToReview = () => {
     if (!selectedTheme) return
 
-    const promptCharacters: PromptCharacter[] = selectedCharacters.map(c => ({
-      name: c.name,
-      isGuest: c.isGuest || false,
-    }))
+    // Create enhanced prompts with character context
+    const characterNames = selectedCharacters.map(c => c.name)
+    const characterContext = characterNames.length > 0 
+      ? `\n\nCharacters: ${characterNames.join(", ")}`
+      : ""
+    
+    const customContext = customPrompt.trim() 
+      ? `\n\nCustom ideas: ${customPrompt}`
+      : ""
 
-    const generatedTitle = buildStoryTitle(selectedTheme.id as ThemeId, {
-      characters: promptCharacters,
+    // Build the base prompts and enhance them with character/custom context
+    const baseTitle = buildStoryTitle(selectedTheme.id as ThemeId)
+    const baseStoryPrompt = buildStoryPrompt(selectedTheme.id as ThemeId)
+    const baseImagePrompt = buildImagePrompt(selectedTheme.id as ThemeId, {
+      characters: selectedCharacters.map(c => ({ name: c.name, isGuest: c.isGuest || false })),
       customPrompt,
     })
 
-    const generatedStoryPrompt = buildStoryPrompt(selectedTheme.id as ThemeId, {
-      characters: promptCharacters,
-      customPrompt,
-    })
+    // Enhance the prompts with character context
+    const enhancedTitle = baseTitle + (characterNames.length > 0 ? ` featuring ${characterNames.join(" and ")}` : "")
+    const enhancedStoryPrompt = baseStoryPrompt + characterContext + customContext
+    const enhancedImagePrompt = baseImagePrompt
 
-    const generatedImagePrompt = buildImagePrompt(selectedTheme.id as ThemeId, {
-      characters: promptCharacters,
-      customPrompt,
-    })
-
-    setStoryTitle(generatedTitle)
-    setStoryPrompt(generatedStoryPrompt)
-    setImagePrompt(generatedImagePrompt)
+    setStoryTitle(enhancedTitle)
+    setStoryPrompt(enhancedStoryPrompt)
+    setImagePrompt(enhancedImagePrompt)
     go("review")
   }
 
