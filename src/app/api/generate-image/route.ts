@@ -1,118 +1,146 @@
-import { NextRequest, NextResponse } from 'next/server'
+// src/app/api/generate-image/route.ts
+// Server-side: calls OpenAI DALL-E 3, uploads the result to Cloudinary, returns the Cloudinary URL.
+//
+// Env vars required in Vercel:
+//   OPENAI_API_KEY
+//   CLOUDINARY_CLOUD_NAME        (e.g. "dzx6x1hou")
+//   CLOUDINARY_API_KEY           (e.g. "228818781471743")
+//   CLOUDINARY_API_SECRET        (the matching secret for the Storyloom key)
 
-interface ImageGenerationRequest {
+import { NextRequest, NextResponse } from "next/server"
+import crypto from "crypto"
+
+export const runtime = "nodejs"
+export const maxDuration = 60 // DALL-E 3 typically 10-20s; 60s is comfortable headroom
+
+type Body = {
   prompt: string
-  style?: string
-  size?: string
+  theme?: string
+  storyTitle?: string
+  quality?: "standard" | "hd"
+  size?: "1024x1024" | "1024x1792" | "1792x1024"
+  style?: "vivid" | "natural"
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { prompt, style = 'children-book-illustration', size = '1024x1024' } = await request.json() as ImageGenerationRequest
+    const body = (await req.json()) as Body
+    const { prompt, theme = "general", storyTitle = "storyloom-cover" } = body
+    const quality = body.quality ?? "standard" // ~$0.04 at 1024x1024 — matches what was working yesterday
+    const size = body.size ?? "1024x1024"       // square, cheapest tier, good children's book look
+    const style = body.style ?? "vivid"         // saturated, children's-book friendly
 
-    console.log('🎨 AI Image generation request:', { prompt, style, size })
+    if (!prompt || prompt.trim().length < 10) {
+      return NextResponse.json({ error: "Prompt too short" }, { status: 400 })
+    }
 
-    // Validate OpenAI API key
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('❌ OPENAI_API_KEY not found in environment variables')
+    const openaiKey = process.env.OPENAI_API_KEY
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME
+    const cloudKey = process.env.CLOUDINARY_API_KEY
+    const cloudSecret = process.env.CLOUDINARY_API_SECRET
+
+    if (!openaiKey) return NextResponse.json({ error: "OPENAI_API_KEY not set" }, { status: 500 })
+    if (!cloudName || !cloudKey || !cloudSecret) {
+      return NextResponse.json({ error: "Cloudinary env vars missing" }, { status: 500 })
+    }
+
+    // ---------- 1. Call DALL-E 3 ----------
+    const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify({
+        model: "dall-e-3",
+        prompt,
+        n: 1,              // DALL-E 3 only supports n=1
+        size,
+        quality,
+        style,
+        response_format: "url", // 60-minute signed URL
+      }),
+    })
+
+    if (!openaiRes.ok) {
+      const errText = await openaiRes.text()
+      console.error("OpenAI error:", errText)
+      return NextResponse.json(
+        { error: "OpenAI image generation failed", detail: errText },
+        { status: 502 }
+      )
+    }
+
+    const openaiJson = await openaiRes.json()
+    const tempUrl: string | undefined = openaiJson?.data?.[0]?.url
+    const revisedPrompt: string | undefined = openaiJson?.data?.[0]?.revised_prompt
+    if (!tempUrl) {
+      return NextResponse.json({ error: "No image returned from OpenAI" }, { status: 502 })
+    }
+
+    // ---------- 2. Upload to Cloudinary (Cloudinary fetches the URL directly) ----------
+    const timestamp = Math.floor(Date.now() / 1000)
+    const safeTitle = storyTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "cover"
+    const publicId = `${safeTitle}-${timestamp}`
+    const folder = "storyloom/book-covers"
+
+    // Cloudinary signature: sha1 of alphabetically-sorted params + api_secret
+    const paramsToSign: Record<string, string> = {
+      folder,
+      public_id: publicId,
+      timestamp: String(timestamp),
+    }
+    const toSign = Object.keys(paramsToSign)
+      .sort()
+      .map((k) => `${k}=${paramsToSign[k]}`)
+      .join("&")
+    const signature = crypto
+      .createHash("sha1")
+      .update(toSign + cloudSecret)
+      .digest("hex")
+
+    const form = new FormData()
+    form.append("file", tempUrl) // Cloudinary fetches the DALL-E URL server-side
+    form.append("api_key", cloudKey)
+    form.append("timestamp", String(timestamp))
+    form.append("signature", signature)
+    form.append("folder", folder)
+    form.append("public_id", publicId)
+
+    const cloudRes = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      { method: "POST", body: form }
+    )
+
+    if (!cloudRes.ok) {
+      const errText = await cloudRes.text()
+      console.error("Cloudinary error:", errText)
+      // The DALL-E URL still works for ~60 minutes, return it so the UI isn't broken.
       return NextResponse.json({
-        success: false,
-        error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to your environment variables.'
-      }, { status: 500 })
-    }
-
-    // Enhanced prompt specifically for high-quality children's book illustrations
-    const enhancedPrompt = `A vibrant, detailed children's storybook illustration: ${prompt}. 
-    Style: Colorful, whimsical, child-friendly cartoon illustration with smooth gradients and soft lighting. 
-    Art style: Digital painting, bright and cheerful colors, enchanting atmosphere, professional children's book quality. 
-    Safe for children, magical and engaging, storybook art style similar to popular children's book illustrations.`
-
-    try {
-      console.log('🚀 Calling OpenAI DALL-E 3 API...')
-      
-      const openaiResponse = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'dall-e-3',
-          prompt: enhancedPrompt,
-          n: 1,
-          size: size as '1024x1024' | '1792x1024' | '1024x1792',
-          quality: 'standard', // 'hd' for higher quality but slower/more expensive
-          style: 'vivid' // 'vivid' for more dramatic, 'natural' for more realistic
-        }),
+        url: tempUrl,
+        cloudinaryFailed: true,
+        detail: errText,
+        revisedPrompt,
       })
-
-      if (!openaiResponse.ok) {
-        const errorText = await openaiResponse.text()
-        console.error('❌ OpenAI API error:', openaiResponse.status, errorText)
-        throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`)
-      }
-
-      const openaiData = await openaiResponse.json()
-      console.log('✅ OpenAI API response received')
-      
-      if (openaiData.data && openaiData.data[0]?.url) {
-        console.log('🎉 AI image generated successfully with DALL-E 3')
-        
-        return NextResponse.json({
-          success: true,
-          imageUrl: openaiData.data[0].url,
-          provider: 'dall-e-3',
-          revisedPrompt: openaiData.data[0].revised_prompt || prompt
-        })
-      } else {
-        console.error('❌ Invalid OpenAI response format:', openaiData)
-        throw new Error('Invalid response format from OpenAI API')
-      }
-
-    } catch (openaiError) {
-      console.error('❌ OpenAI API request failed:', openaiError)
-      
-      // Enhanced Unsplash fallback with better search terms
-      console.log('🔄 Falling back to enhanced Unsplash...')
-      try {
-        // Create better search terms from the prompt
-        const searchTerms = prompt
-          .toLowerCase()
-          .replace(/[^\w\s]/g, '')
-          .split(' ')
-          .filter(word => word.length > 2)
-          .slice(0, 3)
-          .join(',')
-
-        const fallbackUrl = `https://source.unsplash.com/1024x1024/?${searchTerms},children,illustration,cartoon,colorful,storybook&sig=${Date.now()}`
-        
-        console.log('✅ Using enhanced Unsplash fallback')
-        return NextResponse.json({
-          success: true,
-          imageUrl: fallbackUrl,
-          provider: 'unsplash-fallback',
-          note: 'Using enhanced Unsplash fallback - OpenAI API temporarily unavailable'
-        })
-      } catch (fallbackError) {
-        console.error('❌ Unsplash fallback failed:', fallbackError)
-        throw openaiError // Throw original error if fallback also fails
-      }
     }
 
-  } catch (error) {
-    console.error('❌ Image generation error:', error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred during image generation'
-    }, { status: 500 })
-  }
-}
+    const cloudJson = await cloudRes.json()
 
-// Optional: Add a GET endpoint for health check
-export async function GET() {
-  return NextResponse.json({
-    status: 'AI Image Generation API Ready',
-    provider: process.env.OPENAI_API_KEY ? 'OpenAI DALL-E 3' : 'Fallback only',
-    timestamp: new Date().toISOString()
-  })
+    return NextResponse.json({
+      url: cloudJson.secure_url,
+      publicId: cloudJson.public_id,
+      width: cloudJson.width,
+      height: cloudJson.height,
+      theme,
+      revisedPrompt, // DALL-E 3 rewrites the prompt internally — useful to log/show
+    })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    console.error("generate-image route error:", msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
