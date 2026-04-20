@@ -10,6 +10,7 @@ interface Character {
   personality?: string
   favoriteThings?: string
   isChild: boolean
+  isGuest: boolean
   isActive: boolean
 }
 
@@ -118,7 +119,7 @@ export default function StoryLoomFinal() {
       if (savedCharactersData) {
         const characters = JSON.parse(savedCharactersData)
         setSavedCharacters(characters)
-        const children = characters.filter((c: Character) => c.isChild)
+        const children = characters.filter((c: Character) => c.isChild || c.isGuest)
         setActiveCharacters(children)
       }
 
@@ -152,9 +153,26 @@ export default function StoryLoomFinal() {
       personality: "",
       favoriteThings: "",
       isChild: true,
+      isGuest: false,
       isActive: false
     }
     const updated = [...savedCharacters, newChar]
+    setSavedCharacters(updated)
+    saveToStorage("storyloom_characters", updated)
+  }
+
+  const addNewGuest = () => {
+    const newGuest: Character = {
+      id: Date.now().toString(),
+      name: "",
+      age: "",
+      personality: "",
+      favoriteThings: "",
+      isChild: false,
+      isGuest: true,
+      isActive: false
+    }
+    const updated = [...savedCharacters, newGuest]
     setSavedCharacters(updated)
     saveToStorage("storyloom_characters", updated)
   }
@@ -185,6 +203,62 @@ export default function StoryLoomFinal() {
     setSelectedTheme(theme)
     setShowThemes(false)
     setCurrentStep("ai-generator")
+  }
+
+  const generateStory = async () => {
+    if (activeCharacters.length === 0) {
+      alert("Please select some characters first!")
+      return
+    }
+    
+    setIsGenerating(true)
+    setUploadProgress("🪄 Creating your magical story...")
+    
+    try {
+      const characterNames = activeCharacters.map(c => c.name).join(" and ")
+      const prompts = storyPromptsByTheme[selectedTheme]
+      const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)]
+      const storyTitle = `${characterNames} and Tommy's ${selectedTheme.charAt(0).toUpperCase() + selectedTheme.slice(1)} Adventure`
+      
+      // Simulate story creation delay
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Create story
+      const themeStories: Record<ThemeType, string> = {
+        space: `Once upon a time, in Tommy's magical space world, ${characterNames} ${randomPrompt}. They zoomed past rainbow planets, met friendly aliens who spoke in musical tones, and discovered that the universe is full of friendship and wonder. With Tommy's wise dragon as their guide, they learned that even in the vastness of space, love and kindness can bridge any distance.`,
+        jungle: `Deep in Tommy's enchanted jungle, ${characterNames} ${randomPrompt}. They swung on vines with colorful parrots, discovered hidden waterfalls that sparkled like diamonds, and learned the ancient secrets of the forest from wise old trees. Tommy's dragon friend helped them understand that nature is full of magic for those who know how to listen.`,
+        ocean: `Across Tommy's magical ocean, ${characterNames} ${randomPrompt}. They sailed on ships with rainbow sails, dove deep to visit underwater kingdoms, and met mermaids who taught them the songs of the sea. With Tommy's sea dragon by their side, they discovered that the ocean holds treasures beyond imagination.`,
+        dinosaur: `In Tommy's prehistoric world, ${characterNames} ${randomPrompt}. They rode on the backs of gentle giants, helped baby dinosaurs learn to fly, and discovered that these ancient creatures were wise and kind. Tommy's time-traveling dragon showed them that friendship exists across all ages.`,
+        pirate: `On Tommy's magical pirate seas, ${characterNames} ${randomPrompt}. They sailed under rainbow flags, found treasure chests filled with friendship instead of gold, and learned that the greatest adventures come from helping others. Tommy's pirate dragon taught them that true treasure is the crew you sail with.`,
+        "monster-trucks": `In Tommy's extreme racing world, ${characterNames} ${randomPrompt}. They built incredible machines powered by kindness, raced across rainbow tracks that defied gravity, and learned that winning means helping everyone cross the finish line together. Tommy's racing dragon showed them that the best victories are shared ones.`
+      }
+      
+      const newStory: Story = {
+        id: Date.now().toString(),
+        title: storyTitle,
+        fullText: themeStories[selectedTheme] + " And they all lived happily ever after, knowing that Tommy's magical world would always be there for their next adventure. The End.",
+        coverImagePrompt: `${characterNames} in ${selectedTheme} world`,
+        wordCount: 200,
+        characters: activeCharacters,
+        theme: `Tommy's ${selectedTheme.charAt(0).toUpperCase() + selectedTheme.slice(1)} World`,
+        createdAt: new Date().toISOString()
+      }
+      
+      const updatedStories = [...savedStories, newStory]
+      setSavedStories(updatedStories)
+      saveToStorage("storyloom_stories", updatedStories)
+      setCurrentStory(newStory)
+      
+      setUploadProgress("🎉 Story created successfully!")
+      setCurrentStep("reading")
+      
+    } catch (error) {
+      console.error("Error generating story:", error)
+      setUploadProgress("❌ Error generating story")
+    } finally {
+      setIsGenerating(false)
+      setTimeout(() => setUploadProgress(""), 3000)
+    }
   }
 
   // HOMEPAGE - Seamless logo without box
@@ -270,7 +344,7 @@ export default function StoryLoomFinal() {
     )
   }
 
-  // CHARACTER MANAGEMENT - Same large seamless logo
+  // CHARACTER MANAGEMENT - Same large seamless logo + Guests option
   if (currentStep === "characters") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
@@ -286,7 +360,7 @@ export default function StoryLoomFinal() {
 
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-white">Add Your Family Characters</h1>
+            <h1 className="text-3xl font-bold text-white">Add Your Family & Guests</h1>
             <button
               onClick={() => setCurrentStep("start")}
               className="bg-white/20 text-white px-6 py-3 rounded-xl hover:bg-white/30 transition-all"
@@ -297,7 +371,7 @@ export default function StoryLoomFinal() {
           
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-6">
             <p className="text-white/90 mb-4 text-lg">
-              Add your family members to create personalized adventures in Tommy&apos;s magical world! 🐲✨
+              Add your family members and guests to create personalized adventures in Tommy&apos;s magical world! 🐲✨
             </p>
           </div>
 
@@ -307,65 +381,93 @@ export default function StoryLoomFinal() {
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-yellow-300 to-orange-400 rounded-xl flex items-center justify-center">
                     <span className="text-purple-900 text-2xl font-bold">
-                      {character.name ? character.name.charAt(0).toUpperCase() : '👤'}
+                      {character.name ? character.name.charAt(0).toUpperCase() : (character.isGuest ? '👥' : '👤')}
                     </span>
                   </div>
                   <div className="flex-1">
-                    <input
-                      type="checkbox"
-                      checked={character.isChild}
-                      onChange={(e) => updateCharacter(character.id, { isChild: e.target.checked })}
-                      className="rounded"
-                    />
-                    <label className="text-white text-sm ml-2">Child Character</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name={`character-type-${character.id}`}
+                          checked={character.isChild}
+                          onChange={() => updateCharacter(character.id, { isChild: true, isGuest: false })}
+                          className="mr-1"
+                        />
+                        <span className="text-white text-sm">Family</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name={`character-type-${character.id}`}
+                          checked={character.isGuest}
+                          onChange={() => updateCharacter(character.id, { isChild: false, isGuest: true })}
+                          className="mr-1"
+                        />
+                        <span className="text-white text-sm">Guest</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
                 
                 <input
                   type="text"
-                  placeholder="Character Name"
+                  placeholder={character.isGuest ? "Guest Name" : "Character Name"}
                   value={character.name}
                   onChange={(e) => updateCharacter(character.id, { name: e.target.value })}
                   className="w-full mb-3 px-4 py-3 rounded-lg border border-gray-300 font-medium text-gray-800"
                 />
                 
-                <input
-                  type="text"
-                  placeholder="Age (e.g., 8 years old)"
-                  value={character.age || ""}
-                  onChange={(e) => updateCharacter(character.id, { age: e.target.value })}
-                  className="w-full mb-3 px-4 py-3 rounded-lg border border-gray-300 text-gray-800"
-                />
-                
-                <textarea
-                  placeholder="Personality (e.g., curious and brave)"
-                  value={character.personality || ""}
-                  onChange={(e) => updateCharacter(character.id, { personality: e.target.value })}
-                  className="w-full mb-4 px-4 py-3 rounded-lg border border-gray-300 h-20 resize-none text-sm text-gray-800"
-                />
+                {!character.isGuest && (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Age (e.g., 8 years old)"
+                      value={character.age || ""}
+                      onChange={(e) => updateCharacter(character.id, { age: e.target.value })}
+                      className="w-full mb-3 px-4 py-3 rounded-lg border border-gray-300 text-gray-800"
+                    />
+                    
+                    <textarea
+                      placeholder="Personality (e.g., curious and brave)"
+                      value={character.personality || ""}
+                      onChange={(e) => updateCharacter(character.id, { personality: e.target.value })}
+                      className="w-full mb-4 px-4 py-3 rounded-lg border border-gray-300 h-20 resize-none text-sm text-gray-800"
+                    />
+                  </>
+                )}
                 
                 <button
                   onClick={() => removeCharacter(character.id)}
                   className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm w-full transition-all"
                 >
-                  Remove Character
+                  Remove
                 </button>
               </div>
             ))}
           </div>
           
           <div className="text-center space-y-4">
-            <button
-              onClick={addNewCharacter}
-              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all hover:scale-105"
-            >
-              ➕ Add New Character
-            </button>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={addNewCharacter}
+                className="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all hover:scale-105"
+              >
+                ➕ Add Family Member
+              </button>
+
+              <button
+                onClick={addNewGuest}
+                className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all hover:scale-105"
+              >
+                👥 Add Guest
+              </button>
+            </div>
 
             {savedCharacters.length > 0 && (
               <button
                 onClick={() => setCurrentStep("story-builder")}
-                className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 hover:from-blue-300 hover:via-purple-300 hover:to-pink-300 text-white px-12 py-4 rounded-xl font-bold text-xl transition-all hover:scale-105 ml-4"
+                className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 hover:from-blue-300 hover:via-purple-300 hover:to-pink-300 text-white px-12 py-4 rounded-xl font-bold text-xl transition-all hover:scale-105"
               >
                 📚 Continue to Story Builder
               </button>
@@ -376,7 +478,7 @@ export default function StoryLoomFinal() {
     )
   }
 
-  // STORY BUILDER - Updated theme display
+  // STORY BUILDER - Fixed theme display (single box, max width)
   if (currentStep === "story-builder") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
@@ -448,7 +550,7 @@ export default function StoryLoomFinal() {
             </div>
           </div>
 
-          {/* Themes Display - Shows below when clicked */}
+          {/* Themes Display - SINGLE BOX with max width constraint */}
           {showThemes && (
             <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border-2 border-white/30">
               <h2 className="text-4xl font-bold text-white mb-8 text-center">Themes</h2>
@@ -458,18 +560,17 @@ export default function StoryLoomFinal() {
                   <div
                     key={theme}
                     onClick={() => goToThemeGenerator(theme as ThemeType)}
-                    className="group cursor-pointer bg-white/20 rounded-3xl p-6 hover:scale-105 transition-all hover:bg-white/30"
+                    className="group cursor-pointer bg-white/20 rounded-3xl p-6 hover:scale-105 transition-all hover:bg-white/30 text-center"
                   >
-                    <div className="text-center">
-                      <img 
-                        src={imageUrl}
-                        alt={theme}
-                        className="w-[384px] h-[256px] object-cover rounded-2xl mx-auto mb-4 shadow-2xl"
-                      />
-                      <h3 className="text-2xl font-bold text-white group-hover:text-yellow-200 transition-colors">
-                        {THEME_NAMES[theme as ThemeType]}
-                      </h3>
-                    </div>
+                    {/* SINGLE BOX: Image and text together, with max-width constraint */}
+                    <img 
+                      src={imageUrl}
+                      alt={theme}
+                      className="w-full max-w-[320px] h-auto object-contain rounded-2xl mx-auto mb-4 shadow-2xl"
+                    />
+                    <h3 className="text-2xl font-bold text-white group-hover:text-yellow-200 transition-colors">
+                      {THEME_NAMES[theme as ThemeType]}
+                    </h3>
                   </div>
                 ))}
               </div>
@@ -480,23 +581,26 @@ export default function StoryLoomFinal() {
     )
   }
 
-  // AI GENERATOR - Theme selection and character choice
+  // AI GENERATOR - Large theme logo replaces Tommy logo (same size as landing page)
   if (currentStep === "ai-generator") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
-        {/* Header */}
+        {/* Large Theme Logo - SAME SIZE as landing page Tommy logo */}
         <div className="flex items-center justify-center mb-8">
           <img
-            src={TOMMY_LOGO_URL}
-            alt="StoryLoom"
-            className="w-[384px] h-[256px] object-contain"
+            src={THEME_IMAGES[selectedTheme]}
+            alt={selectedTheme}
+            className="w-[768px] h-[512px] object-contain"
             onError={() => setLogoError(true)}
           />
         </div>
 
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-4xl font-bold text-white">AI Story Generator</h1>
+            <div>
+              <h1 className="text-4xl font-bold text-white">AI Story Generator</h1>
+              <h2 className="text-2xl text-white/90">{THEME_NAMES[selectedTheme]}</h2>
+            </div>
             <button
               onClick={() => setCurrentStep("story-builder")}
               className="bg-white/20 text-white px-6 py-3 rounded-xl hover:bg-white/30 transition-all"
@@ -505,78 +609,113 @@ export default function StoryLoomFinal() {
             </button>
           </div>
 
-          {/* Selected Theme Display */}
+          {/* Character Selection */}
           <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border-2 border-white/30 mb-8">
-            <div className="flex items-center gap-6 mb-6">
-              <img 
-                src={THEME_IMAGES[selectedTheme]}
-                alt={selectedTheme}
-                className="w-24 h-24 object-cover rounded-xl"
-              />
-              <div>
-                <h2 className="text-3xl font-bold text-white">{THEME_NAMES[selectedTheme]}</h2>
-                <p className="text-white/90 text-lg">Create magical adventures in Tommy&apos;s {selectedTheme} world</p>
+            <h3 className="text-2xl font-bold text-white mb-6">Choose Characters for Your Story:</h3>
+            {savedCharacters.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {savedCharacters.map((character) => (
+                  <label key={character.id} className="flex items-center gap-3 p-4 bg-white/20 rounded-xl cursor-pointer hover:bg-white/30 transition-all">
+                    <input
+                      type="checkbox"
+                      checked={activeCharacters.find(c => c.id === character.id) !== undefined}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setActiveCharacters([...activeCharacters, character])
+                        } else {
+                          setActiveCharacters(activeCharacters.filter(c => c.id !== character.id))
+                        }
+                      }}
+                      className="w-5 h-5"
+                    />
+                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-300 to-orange-400 rounded-lg flex items-center justify-center">
+                      <span className="text-purple-900 text-lg font-bold">
+                        {character.name ? character.name.charAt(0).toUpperCase() : (character.isGuest ? '👥' : '👤')}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-white font-bold">{character.name || 'Unnamed'} {character.isGuest ? '(Guest)' : ''}</p>
+                      <p className="text-white/70 text-sm">{character.age}</p>
+                    </div>
+                  </label>
+                ))}
               </div>
-            </div>
-
-            {/* Character Selection */}
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-white mb-4">Choose Characters for Your Story:</h3>
-              {savedCharacters.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {savedCharacters.map((character) => (
-                    <label key={character.id} className="flex items-center gap-3 p-4 bg-white/20 rounded-xl cursor-pointer hover:bg-white/30 transition-all">
-                      <input
-                        type="checkbox"
-                        checked={activeCharacters.find(c => c.id === character.id) !== undefined}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setActiveCharacters([...activeCharacters, character])
-                          } else {
-                            setActiveCharacters(activeCharacters.filter(c => c.id !== character.id))
-                          }
-                        }}
-                        className="w-5 h-5"
-                      />
-                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-300 to-orange-400 rounded-lg flex items-center justify-center">
-                        <span className="text-purple-900 text-lg font-bold">
-                          {character.name ? character.name.charAt(0).toUpperCase() : '👤'}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-white font-bold">{character.name || 'Unnamed'}</p>
-                        <p className="text-white/70 text-sm">{character.age}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-white/90 text-lg mb-4">No characters added yet!</p>
-                  <button
-                    onClick={() => setCurrentStep("characters")}
-                    className="bg-gradient-to-r from-green-400 to-green-600 text-white px-8 py-4 rounded-xl font-bold transition-all hover:scale-105"
-                  >
-                    Add Your Family Characters
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Generate Button */}
-            {activeCharacters.length > 0 && (
-              <div className="text-center">
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-white/90 text-lg mb-4">No characters added yet!</p>
                 <button
-                  onClick={() => {
-                    // Generate story logic would go here
-                    alert(`Generating ${selectedTheme} story with ${activeCharacters.map(c => c.name).join(', ')}!`)
-                  }}
-                  className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 hover:from-yellow-300 hover:via-orange-300 hover:to-red-300 text-purple-900 px-12 py-6 rounded-2xl font-bold text-2xl shadow-2xl transition-all transform hover:scale-105"
+                  onClick={() => setCurrentStep("characters")}
+                  className="bg-gradient-to-r from-green-400 to-green-600 text-white px-8 py-4 rounded-xl font-bold transition-all hover:scale-105"
                 >
-                  🪄 Generate {THEME_NAMES[selectedTheme]} Adventure!
+                  Add Your Family Characters
                 </button>
               </div>
             )}
+
+            {/* Generate Button - WORKING FUNCTIONALITY */}
+            {activeCharacters.length > 0 && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={generateStory}
+                  disabled={isGenerating}
+                  className={`${
+                    isGenerating 
+                      ? "bg-gray-500 cursor-not-allowed" 
+                      : "bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 hover:from-yellow-300 hover:via-orange-300 hover:to-red-300"
+                  } text-purple-900 px-12 py-6 rounded-2xl font-bold text-2xl shadow-2xl transition-all transform hover:scale-105`}
+                >
+                  {isGenerating ? "🪄 Creating Magic..." : `🪄 Generate ${THEME_NAMES[selectedTheme]} Adventure!`}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // READING SCREEN - Story display
+  if (currentStep === "reading" && currentStory) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-bold text-white">Your Magical Story</h1>
+            <button
+              onClick={() => setCurrentStep("start")}
+              className="bg-white/20 text-white px-6 py-3 rounded-xl hover:bg-white/30 transition-all"
+            >
+              🏠 Back to Home
+            </button>
+          </div>
+          
+          <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-8 shadow-2xl">
+            <h2 className="text-3xl font-bold text-white mb-6 text-center">{currentStory.title}</h2>
+            <div className="bg-white/20 rounded-2xl p-6 mb-6">
+              <p className="text-white text-lg leading-relaxed">{currentStory.fullText}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-white/90 mb-4">
+                Featuring: {currentStory.characters.map(c => c.name).join(", ")}
+              </p>
+              <p className="text-white/80 text-sm">
+                Theme: {currentStory.theme} • Word Count: {currentStory.wordCount}
+              </p>
+            </div>
+            <div className="flex justify-center gap-4 mt-8">
+              <button
+                onClick={() => setCurrentStep("ai-generator")}
+                className="bg-gradient-to-r from-blue-400 to-purple-400 text-white px-8 py-3 rounded-xl font-bold transition-all hover:scale-105"
+              >
+                🔄 Create Another Story
+              </button>
+              <button
+                onClick={() => setCurrentStep("library")}
+                className="bg-gradient-to-r from-green-400 to-green-600 text-white px-8 py-3 rounded-xl font-bold transition-all hover:scale-105"
+              >
+                📚 View Library
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -662,7 +801,14 @@ export default function StoryLoomFinal() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {savedStories.map((story) => (
-                <div key={story.id} className="bg-white/20 backdrop-blur-md rounded-2xl p-6 hover:scale-105 transition-all cursor-pointer">
+                <div 
+                  key={story.id} 
+                  onClick={() => {
+                    setCurrentStory(story)
+                    setCurrentStep("reading")
+                  }}
+                  className="bg-white/20 backdrop-blur-md rounded-2xl p-6 hover:scale-105 transition-all cursor-pointer"
+                >
                   <div className="aspect-[4/5] bg-white rounded-xl mb-4 overflow-hidden">
                     {story.coverImageUrl ? (
                       <img src={story.coverImageUrl} alt={story.title} className="w-full h-full object-cover" />
