@@ -32,20 +32,20 @@ type ThemeType = "space" | "jungle" | "ocean" | "dinosaur" | "pirate" | "monster
 const CLOUDINARY_CLOUD_NAME = "dzx6x1hou"
 const CLOUDINARY_API_KEY = "228818781471743"
 
-// Tommy's main logo URL from Cloudinary
-const TOMMY_LOGO_URL = "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/tommy-logo.png"
+// Tommy's main logo URL with correct Cloudinary URL
+const TOMMY_LOGO_URL = "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662026/tommy-logo.png"
 
-// Theme images from Cloudinary with proper typing
+// Theme images with correct Cloudinary URLs
 const THEME_IMAGES: Record<ThemeType, string> = {
-  space: "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/themes/space.png",
-  jungle: "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/themes/jungle.png",
-  ocean: "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/themes/ocean.png",
-  dinosaur: "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/themes/dinosaur.png",
-  pirate: "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/themes/pirate.png",
-  "monster-trucks": "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/themes/monster-trucks.png"
+  space: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776661893/space.png",
+  jungle: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662020/jungle.png",
+  ocean: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662024/ocean.png",
+  dinosaur: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662024/dinosaur.png",
+  pirate: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662161/pirate.png",
+  "monster-trucks": "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662021/monster-trucks.png"
 }
 
-export default function StoryLoomComplete() {
+export default function StoryLoomFinal() {
   const [currentStep, setCurrentStep] = useState<"start" | "characters" | "themes" | "story" | "generating" | "reading" | "library" | "manage-characters" | "choose-theme">("start")
   const [savedCharacters, setSavedCharacters] = useState<Character[]>([])
   const [activeCharacters, setActiveCharacters] = useState<Character[]>([])
@@ -720,6 +720,6 @@ export default function StoryLoomComplete() {
     )
   }
 
-  // Add other screens here (reading, library, etc.)
+  // Additional screens (reading, library) would go here...
   return null
 }
