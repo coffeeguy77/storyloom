@@ -1,9 +1,7 @@
 "use client"
 
 // src/app/page.tsx
-// StoryLoom — COMPLETE IMPLEMENTATION with working story builders
-//
-// NEW: Full implementations of "Build Your Own Story" and "AI Generate a Story"
+// StoryLoom — Tommy's Logo at Top of All Pages (except theme choice pages)
 
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
@@ -64,17 +62,17 @@ type SavedStory = {
   storyPromptUser: string
   createdAt: number
   characterNames: string[]
-  isManual?: boolean  // NEW: Track if user-written
+  isManual?: boolean
 }
 
 type Screen =
   | "home"
   | "characters"
   | "builder"
-  | "manualBuilder"  // NEW: Build your own story
-  | "aiBuilder"      // NEW: AI generate story
-  | "themeList"
-  | "prepare"
+  | "manualBuilder"
+  | "aiBuilder"
+  | "themeList"     // SPECIAL: Shows theme images, NOT Tommy's logo
+  | "prepare"      // SPECIAL: Shows theme image, NOT Tommy's logo  
   | "review"
   | "generating" 
   | "reading"
@@ -193,7 +191,26 @@ function AnimatedBackground() {
 }
 
 // ===================================================================
-// TOMMY LOGO COMPONENT
+// TOMMY LOGO COMPONENT - USED AT TOP OF ALL PAGES EXCEPT THEME PAGES
+// ===================================================================
+
+function TommyHeaderLogo({ className = "" }: { className?: string }) {
+  return (
+    <div className={`flex justify-center mb-8 ${className}`}>
+      <Image
+        src={CLOUDINARY.tommyLogo}
+        alt="StoryLoom — Tommy's magical stories"
+        width={1536}
+        height={1024}
+        priority
+        className="w-full max-w-[400px] h-auto drop-shadow-2xl filter brightness-110"
+      />
+    </div>
+  )
+}
+
+// ===================================================================
+// LARGE TOMMY LOGO FOR HOME PAGE
 // ===================================================================
 
 function TommyLogo({ size = "large", className = "" }: { size?: "large" | "medium" | "small", className?: string }) {
@@ -314,11 +331,11 @@ export default function StoryLoomPage() {
   // Current/reading story
   const [currentStory, setCurrentStory] = useState<SavedStory | null>(null)
 
-  // NEW: Manual builder state
+  // Manual builder state
   const [manualTitle, setManualTitle] = useState("")
   const [manualStory, setManualStory] = useState("")
 
-  // NEW: AI builder state  
+  // AI builder state  
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiGenre, setAiGenre] = useState("adventure")
   const [aiLength, setAiLength] = useState("medium")
@@ -386,7 +403,7 @@ export default function StoryLoomPage() {
     setScreen("review")
   }
 
-  // ---------- NEW: Manual story save ----------
+  // ---------- Manual story save ----------
   const saveManualStory = async () => {
     if (!manualTitle.trim() || !manualStory.trim()) {
       alert("Please fill in both title and story!")
@@ -446,7 +463,7 @@ export default function StoryLoomPage() {
     }
   }
 
-  // ---------- NEW: AI story generation ----------
+  // ---------- AI story generation ----------
   const generateAiStory = async () => {
     if (!aiPrompt.trim()) {
       alert("Please describe what story you'd like!")
@@ -610,13 +627,18 @@ export default function StoryLoomPage() {
     }
   }
 
-  // ---------- Render ----------
+  // ---------- Render with Tommy Header Logo Logic ----------
+  const showTommyHeader = screen !== "home" && screen !== "themeList" && screen !== "prepare"
+
   return (
     <>
       <AnimatedBackground />
       
       <main className="min-h-screen relative z-10">
         <div className="mx-auto max-w-6xl px-6 py-10">
+          {/* Tommy's Logo Header - Shows on all pages except home, themeList, and prepare */}
+          {showTommyHeader && <TommyHeaderLogo />}
+
           {screen === "home" && <HomeScreen go={setScreen} />}
           {screen === "characters" && (
             <CharactersScreen
@@ -712,6 +734,7 @@ export default function StoryLoomPage() {
 function HomeScreen({ go }: { go: (s: Screen) => void }) {
   return (
     <div className="flex flex-col items-center text-center pt-6">
+      {/* HOME PAGE: Large prominent Tommy logo */}
       <TommyLogo size="large" className="mb-12 animate-pulse" />
       
       <h1 className="text-6xl font-bold text-white mb-6 drop-shadow-lg">
@@ -779,7 +802,7 @@ function CharactersScreen(props: {
   const { characters, addFamilyMember, addGuest, updateCharacter, removeCharacter, go } = props
   return (
     <div className="flex flex-col items-center">
-      <TommyLogo size="medium" className="mb-8" />
+      {/* NO TOMMY LOGO HERE - it's in the header */}
       
       <h2 className="text-4xl font-bold text-white mb-4">Add Your Family to Tommy's World</h2>
       <p className="text-xl text-white/90 mb-8 text-center max-w-2xl">
@@ -873,7 +896,7 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
       icon: "✍️",
       title: "Build Your Own Story",
       desc: "Write your own magical tale with a custom AI-generated cover.",
-      action: () => go("manualBuilder"),  // NEW: Navigate to manual builder
+      action: () => go("manualBuilder"),
       color: "rgba(34, 197, 94, 0.3)"
     },
     {
@@ -881,7 +904,7 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
       icon: "🤖",
       title: "AI Generate a Story",
       desc: "Describe your idea and let AI create the perfect adventure.",
-      action: () => go("aiBuilder"),      // NEW: Navigate to AI builder
+      action: () => go("aiBuilder"),
       color: "rgba(59, 130, 246, 0.3)"
     },
     {
@@ -896,7 +919,7 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
   
   return (
     <div className="flex flex-col items-center">
-      <TommyLogo size="medium" className="mb-8" />
+      {/* NO TOMMY LOGO HERE - it's in the header */}
       
       <h1 className="text-5xl font-bold text-white text-center mb-4">Create Your Story</h1>
       <p className="text-xl text-white/90 mb-12">How would you like to begin this magical journey?</p>
@@ -926,7 +949,6 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
   )
 }
 
-// NEW: Manual story builder screen
 function ManualBuilderScreen({
   title,
   setTitle,
@@ -946,7 +968,7 @@ function ManualBuilderScreen({
   
   return (
     <div className="flex flex-col items-center">
-      <TommyLogo size="small" className="mb-8" />
+      {/* NO TOMMY LOGO HERE - it's in the header */}
       
       <h1 className="text-4xl font-bold text-white mb-4">Write Your Own Story</h1>
       <p className="text-lg text-white/90 mb-8 text-center max-w-2xl">
@@ -998,7 +1020,6 @@ function ManualBuilderScreen({
   )
 }
 
-// NEW: AI story builder screen
 function AiBuilderScreen({
   prompt,
   setPrompt,
@@ -1025,7 +1046,7 @@ function AiBuilderScreen({
   
   return (
     <div className="flex flex-col items-center">
-      <TommyLogo size="small" className="mb-8" />
+      {/* NO TOMMY LOGO HERE - it's in the header */}
       
       <h1 className="text-4xl font-bold text-white mb-4">AI Story Generator</h1>
       <p className="text-lg text-white/90 mb-8 text-center max-w-2xl">
@@ -1123,7 +1144,7 @@ function ThemeListScreen({
 }) {
   return (
     <div className="flex flex-col items-center">
-      <TommyLogo size="medium" className="mb-8" />
+      {/* THEME LIST: NO TOMMY LOGO - Shows theme images instead */}
       
       <h1 className="text-5xl font-bold text-white text-center mb-4">Magical Themes</h1>
       <p className="text-xl text-white/90 mb-12">Pick a world for your next adventure</p>
@@ -1158,8 +1179,6 @@ function ThemeListScreen({
   )
 }
 
-// [Continue with existing screen components...]
-
 function PrepareScreen(props: {
   theme: ThemeId
   characters: Character[]
@@ -1176,6 +1195,7 @@ function PrepareScreen(props: {
 
   return (
     <div className="flex flex-col items-center">
+      {/* PREPARE: Shows theme image, NO Tommy logo */}
       <div className="w-full max-w-[600px] mb-8">
         <img
           src={CLOUDINARY.themes[theme]}
@@ -1288,7 +1308,7 @@ function ReviewScreen(props: {
 
   return (
     <div className="flex flex-col items-center">
-      <TommyLogo size="small" className="mb-8" />
+      {/* NO TOMMY LOGO HERE - it's in the header */}
       
       <h1 className="text-5xl font-bold text-white text-center mb-4">Review & Edit</h1>
       <p className="text-xl text-white/90 text-center mb-12 max-w-3xl">
@@ -1372,7 +1392,7 @@ function GeneratingScreen({
 
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <TommyLogo size="small" className="mb-12" />
+      {/* NO TOMMY LOGO HERE - it's in the header */}
       
       {!error && (
         <MagicalCard className="text-center">
@@ -1410,6 +1430,8 @@ function ReadingScreen({ story, go }: { story: SavedStory; go: (s: Screen) => vo
 
   return (
     <div className="flex flex-col items-center">
+      {/* NO TOMMY LOGO HERE - it's in the header */}
+      
       <MagicalCard className="w-full max-w-4xl overflow-hidden p-0">
         <img src={story.coverUrl} alt={story.title} className="w-full h-auto" />
         <div className="p-8">
@@ -1464,7 +1486,7 @@ function LibraryScreen({
 }) {
   return (
     <div className="flex flex-col items-center">
-      <TommyLogo size="medium" className="mb-8" />
+      {/* NO TOMMY LOGO HERE - it's in the header */}
       
       <h1 className="text-5xl font-bold text-white mb-4">Story Library</h1>
       <p className="text-xl text-white/90 mb-12">Your magical collection awaits</p>
