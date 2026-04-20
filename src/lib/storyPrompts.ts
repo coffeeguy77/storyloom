@@ -1,71 +1,129 @@
-// src/app/api/generate-story/route.ts
-// Server-side: calls OpenAI GPT-4o to generate a 500+ word children's story.
-// Env var required: OPENAI_API_KEY
+// src/lib/storyPrompts.ts
+// Fixed version - simplified to ensure TypeScript compilation
 
-import { NextRequest, NextResponse } from "next/server"
+export type ThemeId = "space" | "jungle" | "ocean" | "dinosaur" | "pirate" | "monster-trucks"
 
-export const runtime = "nodejs"
-export const maxDuration = 60
-
-type Body = {
-  systemPrompt: string
-  userPrompt: string
-  model?: "gpt-4o" | "gpt-4o-mini"
-  temperature?: number
+export type PromptCharacter = {
+  name: string
+  age?: number | string
+  personality?: string
+  isGuest?: boolean
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = (await req.json()) as Body
-    const { systemPrompt, userPrompt } = body
-    const model = body.model ?? "gpt-4o"
-    const temperature = body.temperature ?? 0.9
+const THEME_STORY_HOOKS: Record<ThemeId, { world: string; hook: string; vocabulary: string[] }> = {
+  space: {
+    world: "Tommy's magical universe — a friendly galaxy of candy-colored nebulae, ringed planets, and helpful alien creatures who live among the stars",
+    hook: "a mysterious signal, a lost baby comet, or a planet whose colors have stopped glowing",
+    vocabulary: ["nebula", "constellation", "gravity", "telescope", "orbit", "stardust"],
+  },
+  jungle: {
+    world: "Tommy's emerald jungle — a steamy, sun-dappled rainforest where talking animals, hidden temples, and glowing fireflies guide young explorers",
+    hook: "a missing toucan chick, an overgrown path to a forgotten waterfall, or a map found inside a hollow log",
+    vocabulary: ["canopy", "vine", "explorer", "waterfall", "compass", "rainforest"],
+  },
+  ocean: {
+    world: "Tommy's sparkling ocean — a warm turquoise sea with sunlit coral reefs, singing mermaids, and gentle sea creatures who remember ancient songs",
+    hook: "a pearl that hums, a seahorse separated from its family, or a coral garden that has lost its colors",
+    vocabulary: ["reef", "tide", "current", "snorkel", "lagoon", "seashell"],
+  },
+  dinosaur: {
+    world: "Tommy's prehistoric valley — a golden-hour world of gentle long-necks, playful hatchlings, and distant volcanoes puffing pink smoke",
+    hook: "a hatchling who has wandered from its nest, a river that has stopped flowing, or footprints leading somewhere no one has been",
+    vocabulary: ["fossil", "prehistoric", "herd", "crater", "volcano", "discovery"],
+  },
+  pirate: {
+    world: "Tommy's tropical seas — a crystal-blue ocean of friendly pirate crews, palm-tree islands, and treasure chests that hold more than gold",
+    hook: "a bottle with half a map inside, an island that only appears at sunrise, or a parrot who remembers a forgotten song",
+    vocabulary: ["captain", "compass", "spyglass", "island", "treasure", "sail"],
+  },
+  "monster-trucks": {
+    world: "Tommy's racing arena — a sunny stadium of dirt ramps, flame decals, and cheering crowds where monster trucks have big hearts and bigger wheels",
+    hook: "a championship race, a missing trophy, or a broken ramp that needs fixing before the big show",
+    vocabulary: ["throttle", "suspension", "ramp", "checkered flag", "pit crew", "horsepower"],
+  },
+}
 
-    if (!systemPrompt || !userPrompt) {
-      return NextResponse.json({ error: "Missing prompts" }, { status: 400 })
-    }
+function describeCast(characters: PromptCharacter[]): string {
+  if (!characters.length) return "Tommy, a curious and kind-hearted child"
 
-    const openaiKey = process.env.OPENAI_API_KEY
-    if (!openaiKey) {
-      return NextResponse.json({ error: "OPENAI_API_KEY not set" }, { status: 500 })
-    }
+  // Deduplicate Tommy
+  const seen = new Set<string>()
+  const unique = characters.filter((c) => {
+    const key = c.name.toLowerCase().trim()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        temperature,
-        max_tokens: 1200,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+  return unique
+    .map((c) => {
+      const bits: string[] = [c.name]
+      if (c.age) bits.push(`(age ${c.age})`)
+      if (c.personality) bits.push(`— ${c.personality}`)
+      if (c.isGuest) bits.push("[guest]")
+      return bits.join(" ")
     })
+    .join(", ")
+}
 
-    if (!res.ok) {
-      const errText = await res.text()
-      console.error("OpenAI chat error:", errText)
-      return NextResponse.json(
-        { error: "Story generation failed", detail: errText },
-        { status: 502 }
-      )
-    }
+export function buildStoryPrompt(opts: {
+  theme: ThemeId
+  characters: PromptCharacter[]
+  customAngle?: string
+}): { system: string; user: string } {
+  const lore = THEME_STORY_HOOKS[opts.theme]
+  const cast = describeCast(opts.characters)
+  const hasTommy = opts.characters.some((c) => c.name.toLowerCase() === "tommy")
 
-    const json = await res.json()
-    const story: string | undefined = json?.choices?.[0]?.message?.content?.trim()
-    if (!story) {
-      return NextResponse.json({ error: "No story returned" }, { status: 502 })
-    }
+  const system = [
+    "You are a warm, imaginative children's book author writing for ages 4–8.",
+    "You write in the style of Julia Donaldson crossed with Oliver Jeffers — gentle, funny, vivid, with a clear moral heart.",
+    "Every story has: a strong opening hook, a problem, a journey of discovery, a moment of courage or kindness, and a warm resolution.",
+    "Use sensory details (what things look, sound, smell, feel like). Use dialogue. Give each named character something meaningful to do.",
+    "Avoid repetition. Avoid template phrases like 'they all lived happily ever after' and 'The End'.",
+    "Write between 500 and 650 words. Paragraphs should be short (2–4 sentences) and suitable for reading aloud.",
+    "Return ONLY the story body as plain prose. No title, no markdown, no preamble, no 'Once upon a time' unless it fits.",
+  ].join(" ")
 
-    return NextResponse.json({ story, model, usage: json.usage })
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Unknown error"
-    console.error("generate-story route error:", msg)
-    return NextResponse.json({ error: msg }, { status: 500 })
+  const tommyClause = hasTommy
+    ? "Tommy is already in the cast list — do NOT add a second Tommy."
+    : "Tommy is the series mascot, a curly-haired child adventurer. Include Tommy as a supporting companion."
+
+  const user = [
+    `Theme: ${opts.theme}.`,
+    `World: ${lore.world}.`,
+    `Cast: ${cast}.`,
+    tommyClause,
+    `Story hook idea (pick one or invent a similar one): ${lore.hook}.`,
+    opts.customAngle ? `Angle requested by the family: ${opts.customAngle}.` : "",
+    `Try to naturally work in a few of these theme words: ${lore.vocabulary.join(", ")}.`,
+    `Give every named character at least one specific action or line of dialogue. Guests should feel welcomed into the adventure.`,
+    `End on a warm, satisfying image — not a clichéd tagline.`,
+  ]
+    .filter(Boolean)
+    .join("\n")
+
+  return { system, user }
+}
+
+export function buildStoryTitle(opts: {
+  theme: ThemeId
+  characters: PromptCharacter[]
+}): string {
+  const themeLabel: Record<ThemeId, string> = {
+    space: "Space Adventure",
+    jungle: "Jungle Expedition",
+    ocean: "Ocean Voyage",
+    dinosaur: "Dinosaur Discovery",
+    pirate: "Pirate Tale",
+    "monster-trucks": "Monster Truck Rally",
   }
+
+  const names = [...new Set(opts.characters.map((c) => c.name))]
+    .filter((n) => n.toLowerCase() !== "tommy")
+
+  if (names.length === 0) return `Tommy's ${themeLabel[opts.theme]}`
+  if (names.length === 1) return `${names[0]} and Tommy's ${themeLabel[opts.theme]}`
+  if (names.length === 2) return `${names[0]}, ${names[1]} and Tommy's ${themeLabel[opts.theme]}`
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}'s ${themeLabel[opts.theme]}`
 }
