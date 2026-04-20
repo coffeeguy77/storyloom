@@ -1,8 +1,8 @@
 "use client"
 
 // src/app/page.tsx
-// StoryLoom — WITH CUSTOM TOMMY ICONS
-// Replaced all stock emojis with beautiful Tommy-themed Cloudinary images
+// StoryLoom — FIXED: Much larger icons + proper logo visibility
+// Icons increased from 64px to 120px and logo given proper background protection
 
 import { useEffect, useMemo, useState } from "react"
 import {
@@ -23,7 +23,7 @@ const CLOUDINARY = {
     pirate: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662161/pirate.png",
     "monster-trucks": "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662021/monster-trucks.png",
   } satisfies Record<ThemeId, string>,
-  // NEW: Custom Tommy-themed icons
+  // Custom Tommy-themed icons
   icons: {
     chooseTheme: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688052/tommy-theme.png",
     aiGenerate: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688049/tommy-ai.png", 
@@ -200,29 +200,29 @@ function AnimatedBackground() {
 }
 
 // ===================================================================
-// TOMMY LOGO COMPONENTS - Using regular img tags
+// FIXED TOMMY LOGO COMPONENTS with PROPER BACKGROUND PROTECTION
 // ===================================================================
 
 function TommyHeaderLogo({ className = "" }: { className?: string }) {
   return (
     <div className={`flex justify-center mb-8 ${className}`}>
-      <img
-        src={CLOUDINARY.tommyLogo}
-        alt="StoryLoom — Tommy's magical stories"
-        className={`relative z-10 ${sizeClasses[size]} drop-shadow-2xl filter brightness-125 saturate-110`}
+      {/* FIXED: Background protection with semi-transparent backdrop */}
+      <div className="relative bg-white/20 backdrop-blur-lg rounded-3xl p-6 shadow-2xl border border-white/30">
+        <img
+          src={CLOUDINARY.tommyLogo}
+          alt="StoryLoom — Tommy's magical stories"
+          className="w-full max-w-[500px] h-auto drop-shadow-2xl filter brightness-110 relative z-10"
           style={{ imageRendering: 'auto' }}
-        //className="w-full max-w-[400px] h-auto drop-shadow-2xl filter brightness-110"
-        //style={{ imageRendering: 'auto' }}
-        onError={(e) => {
-          console.error('Tommy header logo failed to load:', e);
-          // Fallback to direct URL if needed
-          const target = e.target as HTMLImageElement;
-          if (target.src !== CLOUDINARY.tommyLogo) {
-            target.src = CLOUDINARY.tommyLogo;
-          }
-        }}
-        onLoad={() => console.log('Tommy header logo loaded successfully')}
-      />
+          onError={(e) => {
+            console.error('Tommy header logo failed to load:', e);
+            const target = e.target as HTMLImageElement;
+            if (target.src !== CLOUDINARY.tommyLogo) {
+              target.src = CLOUDINARY.tommyLogo;
+            }
+          }}
+          onLoad={() => console.log('Tommy header logo loaded successfully')}
+        />
+      </div>
     </div>
   )
 }
@@ -236,27 +236,29 @@ function TommyLogo({ size = "large", className = "" }: { size?: "large" | "mediu
   
   return (
     <div className={`flex justify-center ${className}`}>
-      <img
-        src={CLOUDINARY.tommyLogo}
-        alt="StoryLoom — Tommy's magical stories"
-        className={`${sizeClasses[size]} drop-shadow-2xl filter brightness-110`}
-        style={{ imageRendering: 'auto' }}
-        onError={(e) => {
-          console.error('Tommy main logo failed to load:', e);
-          // Fallback to direct URL if needed
-          const target = e.target as HTMLImageElement;
-          if (target.src !== CLOUDINARY.tommyLogo) {
-            target.src = CLOUDINARY.tommyLogo;
-          }
-        }}
-        onLoad={() => console.log('Tommy main logo loaded successfully')}
-      />
+      {/* FIXED: Background protection for main logo too */}
+      <div className="relative bg-white/15 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/30">
+        <img
+          src={CLOUDINARY.tommyLogo}
+          alt="StoryLoom — Tommy's magical stories"
+          className={`${sizeClasses[size]} drop-shadow-2xl filter brightness-110 relative z-10`}
+          style={{ imageRendering: 'auto' }}
+          onError={(e) => {
+            console.error('Tommy main logo failed to load:', e);
+            const target = e.target as HTMLImageElement;
+            if (target.src !== CLOUDINARY.tommyLogo) {
+              target.src = CLOUDINARY.tommyLogo;
+            }
+          }}
+          onLoad={() => console.log('Tommy main logo loaded successfully')}
+        />
+      </div>
     </div>
   )
 }
 
 // ===================================================================
-// NEW: CUSTOM TOMMY ICON COMPONENT
+// FIXED: MUCH LARGER TOMMY ICON COMPONENT (120px instead of 64px)
 // ===================================================================
 
 function TommyIcon({ 
@@ -269,16 +271,21 @@ function TommyIcon({
   className?: string 
 }) {
   return (
-    <img
-      src={CLOUDINARY.icons[iconKey]}
-      alt={alt}
-      className={`w-80 h-80 object-contain drop-shadow-lg filter brightness-110 ${className}`}
-      style={{ imageRendering: 'auto' }}
-      onError={(e) => {
-        console.error(`Tommy icon ${iconKey} failed to load:`, e);
-      }}
-      onLoad={() => console.log(`Tommy icon ${iconKey} loaded successfully`)}
-    />
+    <div className="relative">
+      {/* FIXED: Much larger icon size with better background protection */}
+      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/20">
+        <img
+          src={CLOUDINARY.icons[iconKey]}
+          alt={alt}
+          className={`w-32 h-32 object-contain drop-shadow-xl filter brightness-110 relative z-10 ${className}`}
+          style={{ imageRendering: 'auto' }}
+          onError={(e) => {
+            console.error(`Tommy icon ${iconKey} failed to load:`, e);
+          }}
+          onLoad={() => console.log(`Tommy icon ${iconKey} loaded successfully`)}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -645,7 +652,7 @@ export default function StoryLoomPage() {
         }),
       })
       if (!imgRes.ok) {
-        const detail = await storyRes.text().catch(() => "")
+        const detail = await imgRes.text().catch(() => "")
         throw new Error(`Cover generation failed: ${detail || imgRes.status}`)
       }
       const { url: coverUrl }: { url: string } = await imgRes.json()
@@ -776,79 +783,80 @@ export default function StoryLoomPage() {
 }
 
 // ===================================================================
-// SCREENS WITH CUSTOM TOMMY ICONS
+// SCREENS WITH MUCH LARGER CUSTOM TOMMY ICONS
 // ===================================================================
 
 function HomeScreen({ go }: { go: (s: Screen) => void }) {
   return (
     <div className="flex flex-col items-center text-center pt-6">
-      {/* HOME PAGE: Large prominent Tommy logo */}
-      <TommyLogo size="large" className="mb-12 animate-pulse" />
-      
-      <h1 className="text-6xl font-bold text-white mb-6 drop-shadow-lg">
-        Welcome to Tommy's World
-      </h1>
-      <p className="text-2xl text-white/90 mb-12 max-w-3xl leading-relaxed drop-shadow-md">
-        Create magical stories with AI-powered adventures, beautiful illustrations, and characters that come to life
-      </p>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
-        <MagicalCard glowColor="rgba(168, 85, 247, 0.3)">
-          <div className="text-center">
-            {/* CUSTOM ICON: Add Your Family */}
-            <div className="flex justify-center mb-6">
-              <TommyIcon iconKey="addFamily" alt="Add Your Family" />
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-3">Add Your Family</h3>
-            <p className="text-white/80 mb-6">Create characters inspired by your loved ones</p>
-            <button
-              onClick={() => go("characters")}
-              className="w-full py-4 px-6 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-lg rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105"
-            >
-              Get Started
-            </button>
+      {/* HOME PAGE: Large prominent Tommy logo with background protection and subtle pulsing */}
+      <TommyLogo 
+        size="large" 
+        className="mb-12 animate-pulse" 
+      />
+
+      {/* Three main action cards - MUCH LARGER ICONS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
+        <MagicalCard
+          onClick={() => go("characters")}
+          className="text-center"
+          glowColor="rgba(255, 107, 107, 0.2)"
+        >
+          <div className="flex justify-center mb-8">
+            <TommyIcon iconKey="addFamily" alt="Add Your Family" />
           </div>
+          <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
+            Add Your Family
+          </h3>
+          <p className="text-white/80 text-lg">
+            Create profiles for your children and family members to include them in magical stories
+          </p>
         </MagicalCard>
 
-        <MagicalCard glowColor="rgba(236, 72, 153, 0.3)">
-          <div className="text-center">
-            {/* CUSTOM ICON: Create Stories */}
-            <div className="flex justify-center mb-6">
-              <TommyIcon iconKey="createStories" alt="Create Stories" />
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-3">Create Stories</h3>
-            <p className="text-white/80 mb-6">Choose themes and generate magical adventures</p>
-            <button
-              onClick={() => go("builder")}
-              className="w-full py-4 px-6 bg-pink-600 hover:bg-pink-700 text-white font-semibold text-lg rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105"
-            >
-              Begin Adventure
-            </button>
+        <MagicalCard
+          onClick={() => go("builder")}
+          className="text-center"
+          glowColor="rgba(78, 205, 196, 0.2)"
+        >
+          <div className="flex justify-center mb-8">
+            <TommyIcon iconKey="createStories" alt="Create Stories" />
           </div>
+          <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
+            Create Stories
+          </h3>
+          <p className="text-white/80 text-lg">
+            Choose from themes, write your own, or let AI create personalized adventures
+          </p>
         </MagicalCard>
 
-        <MagicalCard glowColor="rgba(59, 130, 246, 0.3)">
-          <div className="text-center">
-            {/* CUSTOM ICON: Story Library */}
-            <div className="flex justify-center mb-6">
-              <TommyIcon iconKey="storyLibrary" alt="Story Library" />
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-3">Story Library</h3>
-            <p className="text-white/80 mb-6">Revisit your magical collection</p>
-            <button
-              onClick={() => go("library")}
-              className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105"
-            >
-              Explore Library
-            </button>
+        <MagicalCard
+          onClick={() => go("library")}
+          className="text-center"
+          glowColor="rgba(199, 125, 255, 0.2)"
+        >
+          <div className="flex justify-center mb-8">
+            <TommyIcon iconKey="storyLibrary" alt="Story Library" />
           </div>
+          <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
+            Story Library
+          </h3>
+          <p className="text-white/80 text-lg">
+            Browse and read all your saved stories with beautiful cover art
+          </p>
         </MagicalCard>
       </div>
     </div>
   )
 }
 
-function CharactersScreen(props: {
+function CharactersScreen({ 
+  characters, 
+  addFamilyMember, 
+  addGuest, 
+  updateCharacter, 
+  removeCharacter, 
+  go 
+}: {
   characters: Character[]
   addFamilyMember: () => void
   addGuest: () => void
@@ -856,90 +864,107 @@ function CharactersScreen(props: {
   removeCharacter: (id: string) => void
   go: (s: Screen) => void
 }) {
-  const { characters, addFamilyMember, addGuest, updateCharacter, removeCharacter, go } = props
   return (
-    <div className="flex flex-col items-center">
-      {/* NO TOMMY LOGO HERE - it's in the header */}
-      
-      <h2 className="text-4xl font-bold text-white mb-4">Add Your Family to Tommy's World</h2>
-      <p className="text-xl text-white/90 mb-8 text-center max-w-2xl">
-        Family members become the stars. Guests are special friends who join the adventure.
-      </p>
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
+        Manage Your Characters
+      </h1>
 
-      <div className="w-full max-w-3xl space-y-6 mb-8">
-        {characters.length === 0 && (
-          <MagicalCard>
-            <p className="text-center text-white/70 italic text-lg">
-              No characters yet — add your first one below to begin the magic!
-            </p>
-          </MagicalCard>
-        )}
-        {characters.map((c) => (
-          <MagicalCard key={c.id} glowColor={c.isGuest ? "rgba(245, 158, 11, 0.3)" : "rgba(168, 85, 247, 0.3)"}>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-lg font-semibold text-white">
-                {c.isGuest ? "👥 Guest" : "👤 Family Member"}
-              </span>
-              <button
-                onClick={() => removeCharacter(c.id)}
-                className="text-red-400 hover:text-red-300 text-sm font-medium"
-              >
-                Remove
-              </button>
-            </div>
-            <input
-              value={c.name}
-              onChange={(e) => updateCharacter(c.id, { name: e.target.value })}
-              placeholder={c.isGuest ? "Guest name" : "Name"}
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none text-lg"
-            />
-            {!c.isGuest && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  value={c.age ?? ""}
-                  onChange={(e) => updateCharacter(c.id, { age: e.target.value })}
-                  placeholder="Age (optional)"
-                  className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none"
-                />
-                <input
-                  value={c.personality ?? ""}
-                  onChange={(e) => updateCharacter(c.id, { personality: e.target.value })}
-                  placeholder="Personality (e.g. curious, brave)"
-                  className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none"
-                />
-              </div>
-            )}
-          </MagicalCard>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-4 justify-center mb-8">
+      {/* Add buttons */}
+      <div className="flex justify-center gap-6 mb-12">
         <button
           onClick={addFamilyMember}
-          className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105"
+          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                   hover:transform hover:scale-105"
         >
           + Add Family Member
         </button>
         <button
           onClick={addGuest}
-          className="px-8 py-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105"
+          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                   hover:transform hover:scale-105"
         >
-          + Add Guest
+          + Add Guest Character
         </button>
       </div>
 
-      <div className="flex gap-4">
+      {/* Character list */}
+      <div className="space-y-6">
+        {characters.map((char) => (
+          <MagicalCard key={char.id} className="p-6">
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={char.name}
+                  onChange={(e) => updateCharacter(char.id, { name: e.target.value })}
+                  className="px-4 py-3 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                           text-white placeholder-white/60 focus:outline-none focus:ring-2 
+                           focus:ring-white/30"
+                />
+                {!char.isGuest && (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Age (optional)"
+                      value={char.age || ""}
+                      onChange={(e) => updateCharacter(char.id, { age: e.target.value })}
+                      className="px-4 py-3 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                               text-white placeholder-white/60 focus:outline-none focus:ring-2 
+                               focus:ring-white/30"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Personality (optional)"
+                      value={char.personality || ""}
+                      onChange={(e) => updateCharacter(char.id, { personality: e.target.value })}
+                      className="px-4 py-3 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                               text-white placeholder-white/60 focus:outline-none focus:ring-2 
+                               focus:ring-white/30"
+                    />
+                  </>
+                )}
+                {char.isGuest && (
+                  <div className="md:col-span-2 flex items-center px-4 py-3 bg-blue-500/20 rounded-xl border border-blue-300/30">
+                    <span className="text-blue-200 font-medium">Guest Character (name only)</span>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => removeCharacter(char.id)}
+                className="px-6 py-3 bg-red-500/20 backdrop-blur-md rounded-xl text-red-200 
+                         hover:bg-red-500/30 transition-all duration-300 border border-red-300/30"
+              >
+                Remove
+              </button>
+            </div>
+          </MagicalCard>
+        ))}
+      </div>
+
+      {characters.length === 0 && (
+        <MagicalCard className="text-center py-12">
+          <p className="text-white/80 text-xl mb-6">
+            No characters yet! Add family members or guest characters to include them in your stories.
+          </p>
+          <div className="flex justify-center">
+            <TommyIcon iconKey="addFamily" alt="Add Family" className="opacity-50" />
+          </div>
+        </MagicalCard>
+      )}
+
+      {/* Navigation */}
+      <div className="flex justify-center mt-12">
         <button
           onClick={() => go("home")}
-          className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
+          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                   hover:transform hover:scale-105"
         >
-          ← Home
-        </button>
-        <button
-          onClick={() => go("builder")}
-          className="px-8 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105"
-        >
-          Continue to Story Builder →
+          Back to Home
         </button>
       </div>
     </div>
@@ -947,64 +972,72 @@ function CharactersScreen(props: {
 }
 
 function BuilderScreen({ go }: { go: (s: Screen) => void }) {
-  const options = [
-    {
-      id: "own",
-      iconKey: "buildStory" as const,
-      title: "Build Your Own Story",
-      desc: "Write your own magical tale with a custom AI-generated cover.",
-      action: () => go("manualBuilder"),
-      color: "rgba(34, 197, 94, 0.3)"
-    },
-    {
-      id: "ai", 
-      iconKey: "aiGenerate" as const,
-      title: "AI Generate a Story",
-      desc: "Describe your idea and let AI create the perfect adventure.",
-      action: () => go("aiBuilder"),
-      color: "rgba(59, 130, 246, 0.3)"
-    },
-    {
-      id: "theme",
-      iconKey: "chooseTheme" as const,
-      title: "Choose a Theme",
-      desc: "Pick from six magical preset worlds and characters.",
-      action: () => go("themeList"),
-      color: "rgba(245, 158, 11, 0.3)"
-    },
-  ]
-  
   return (
-    <div className="flex flex-col items-center">
-      {/* NO TOMMY LOGO HERE - it's in the header */}
-      
-      <h1 className="text-5xl font-bold text-white text-center mb-4">Create Your Story</h1>
-      <p className="text-xl text-white/90 mb-12">How would you like to begin this magical journey?</p>
+    <div className="flex flex-col items-center text-center">
+      <h1 className="text-4xl font-bold text-white mb-12 drop-shadow-lg">
+        How would you like to create your story?
+      </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl mb-12">
-        {options.map((o) => (
-          <MagicalCard key={o.id} glowColor={o.color}>
-            <button
-              onClick={o.action}
-              className="text-center w-full h-full"
-            >
-              {/* CUSTOM TOMMY ICONS */}
-              <div className="flex justify-center mb-6">
-                <TommyIcon iconKey={o.iconKey} alt={o.title} />
-              </div>
-              <div className="text-2xl font-bold text-white mb-3">{o.title}</div>
-              <div className="text-white/80 leading-relaxed">{o.desc}</div>
-            </button>
-          </MagicalCard>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
+        <MagicalCard 
+          onClick={() => go("manualBuilder")}
+          className="text-center"
+          glowColor="rgba(255, 195, 113, 0.2)"
+        >
+          <div className="flex justify-center mb-8">
+            <TommyIcon iconKey="buildStory" alt="Build Your Own Story" />
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
+            Build Your Own Story
+          </h3>
+          <p className="text-white/80 text-lg">
+            Write your own magical tale and we'll create a beautiful cover image
+          </p>
+        </MagicalCard>
+
+        <MagicalCard 
+          onClick={() => go("aiBuilder")}
+          className="text-center"
+          glowColor="rgba(135, 206, 250, 0.2)"
+        >
+          <div className="flex justify-center mb-8">
+            <TommyIcon iconKey="aiGenerate" alt="AI Generate a Story" />
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
+            AI Generate a Story
+          </h3>
+          <p className="text-white/80 text-lg">
+            Describe any story idea and our AI will create a complete tale for you
+          </p>
+        </MagicalCard>
+
+        <MagicalCard 
+          onClick={() => go("themeList")}
+          className="text-center"
+          glowColor="rgba(255, 107, 107, 0.2)"
+        >
+          <div className="flex justify-center mb-8">
+            <TommyIcon iconKey="chooseTheme" alt="Choose from a Theme" />
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
+            Choose from a Theme
+          </h3>
+          <p className="text-white/80 text-lg">
+            Pick a magical theme and we'll create a personalized story with your characters
+          </p>
+        </MagicalCard>
       </div>
 
-      <button
-        onClick={() => go("characters")}
-        className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
-      >
-        ← Back
-      </button>
+      <div className="mt-12">
+        <button
+          onClick={() => go("home")}
+          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                   hover:transform hover:scale-105"
+        >
+          Back to Home
+        </button>
+      </div>
     </div>
   )
 }
@@ -1015,66 +1048,68 @@ function ManualBuilderScreen({
   story,
   setStory,
   save,
-  go
+  go,
 }: {
   title: string
-  setTitle: (v: string) => void
+  setTitle: (title: string) => void
   story: string
-  setStory: (v: string) => void
+  setStory: (story: string) => void
   save: () => void
   go: (s: Screen) => void
 }) {
-  const canSave = title.trim() && story.trim()
-  
   return (
-    <div className="flex flex-col items-center">
-      {/* NO TOMMY LOGO HERE - it's in the header */}
-      
-      <h1 className="text-4xl font-bold text-white mb-4">Write Your Own Story</h1>
-      <p className="text-lg text-white/90 mb-8 text-center max-w-2xl">
-        Create your own magical tale! We'll generate a beautiful cover image for your story.
-      </p>
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
+        Build Your Own Story
+      </h1>
 
-      <div className="w-full max-w-4xl space-y-6 mb-8">
+      <div className="space-y-8">
         <MagicalCard>
-          <label className="block text-lg font-semibold text-white mb-3">Story Title</label>
+          <label className="block text-white font-semibold mb-4 text-xl">Story Title</label>
           <input
+            type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Enter your story title..."
-            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none text-xl font-semibold"
+            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
+                     focus:ring-white/30 text-lg"
           />
         </MagicalCard>
 
         <MagicalCard>
-          <label className="block text-lg font-semibold text-white mb-3">Your Story</label>
+          <label className="block text-white font-semibold mb-4 text-xl">Your Story</label>
           <textarea
             value={story}
             onChange={(e) => setStory(e.target.value)}
-            placeholder="Write your magical story here..."
-            rows={15}
-            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none resize-none text-lg leading-relaxed"
+            placeholder="Once upon a time..."
+            rows={12}
+            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
+                     focus:ring-white/30 text-lg resize-none"
           />
-          <div className="mt-3 text-sm text-white/60">
-            📝 Tip: Write in simple language for children ages 4-10. Include exciting adventures and positive messages!
-          </div>
         </MagicalCard>
-      </div>
 
-      <div className="flex gap-4">
-        <button
-          onClick={() => go("builder")}
-          className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
-        >
-          ← Back
-        </button>
-        <button
-          onClick={save}
-          disabled={!canSave}
-          className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold text-xl rounded-xl shadow-2xl transition-all duration-300 hover:shadow-3xl transform hover:scale-105 disabled:transform-none disabled:shadow-none"
-        >
-          📖 Save & Create Cover
-        </button>
+        <div className="flex justify-center gap-6">
+          <button
+            onClick={() => go("builder")}
+            className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                     border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                     hover:transform hover:scale-105"
+          >
+            Back
+          </button>
+          <button
+            onClick={save}
+            disabled={!title.trim() || !story.trim()}
+            className="px-8 py-4 bg-green-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
+                     border border-green-300/30 shadow-xl hover:bg-green-500/40 transition-all duration-300
+                     hover:transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed
+                     disabled:hover:transform-none"
+          >
+            Create Story & Cover
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -1089,518 +1124,610 @@ function AiBuilderScreen({
   setLength,
   characters,
   generate,
-  go
+  go,
 }: {
   prompt: string
-  setPrompt: (v: string) => void
+  setPrompt: (prompt: string) => void
   genre: string
-  setGenre: (v: string) => void
+  setGenre: (genre: string) => void
   length: string
-  setLength: (v: string) => void
+  setLength: (length: string) => void
   characters: Character[]
   generate: () => void
   go: (s: Screen) => void
 }) {
-  const canGenerate = prompt.trim()
-  const namedChars = characters.filter(c => c.name.trim())
-  
-  return (
-    <div className="flex flex-col items-center">
-      {/* NO TOMMY LOGO HERE - it's in the header */}
-      
-      <h1 className="text-4xl font-bold text-white mb-4">AI Story Generator</h1>
-      <p className="text-lg text-white/90 mb-8 text-center max-w-2xl">
-        Describe your story idea and let AI create a magical adventure with a beautiful cover!
-      </p>
+  const genres = ["adventure", "fantasy", "friendship", "mystery", "comedy", "educational"]
+  const lengths = ["short", "medium", "long"]
 
-      <div className="w-full max-w-4xl space-y-6 mb-8">
+  return (
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
+        AI Story Generator
+      </h1>
+
+      <div className="space-y-8">
         <MagicalCard>
-          <label className="block text-lg font-semibold text-white mb-3">What's your story about?</label>
+          <label className="block text-white font-semibold mb-4 text-xl">
+            What story would you like to create?
+          </label>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="e.g. A brave mouse who wants to become a knight and save the kingdom from a grumpy dragon"
+            placeholder="Describe your story idea... (e.g., 'A brave princess who saves a village from a friendly dragon')"
             rows={4}
-            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none resize-none text-lg"
+            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
+                     focus:ring-white/30 text-lg resize-none"
           />
         </MagicalCard>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <MagicalCard>
-            <label className="block text-lg font-semibold text-white mb-3">Story Genre</label>
+            <label className="block text-white font-semibold mb-4 text-xl">Genre</label>
             <select
               value={genre}
               onChange={(e) => setGenre(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:border-white/40 focus:outline-none text-lg"
+              className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                       text-white focus:outline-none focus:ring-2 focus:ring-white/30 text-lg"
             >
-              <option value="adventure" className="bg-gray-800">Adventure</option>
-              <option value="fantasy" className="bg-gray-800">Fantasy</option>
-              <option value="friendship" className="bg-gray-800">Friendship</option>
-              <option value="mystery" className="bg-gray-800">Mystery</option>
-              <option value="comedy" className="bg-gray-800">Comedy</option>
-              <option value="educational" className="bg-gray-800">Educational</option>
+              {genres.map((g) => (
+                <option key={g} value={g} className="bg-purple-800">
+                  {g.charAt(0).toUpperCase() + g.slice(1)}
+                </option>
+              ))}
             </select>
           </MagicalCard>
 
           <MagicalCard>
-            <label className="block text-lg font-semibold text-white mb-3">Story Length</label>
+            <label className="block text-white font-semibold mb-4 text-xl">Length</label>
             <select
               value={length}
               onChange={(e) => setLength(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:border-white/40 focus:outline-none text-lg"
+              className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                       text-white focus:outline-none focus:ring-2 focus:ring-white/30 text-lg"
             >
-              <option value="short" className="bg-gray-800">Short (3-4 paragraphs)</option>
-              <option value="medium" className="bg-gray-800">Medium (5-7 paragraphs)</option>
-              <option value="long" className="bg-gray-800">Long (8-12 paragraphs)</option>
+              {lengths.map((l) => (
+                <option key={l} value={l} className="bg-purple-800">
+                  {l.charAt(0).toUpperCase() + l.slice(1)}
+                </option>
+              ))}
             </select>
           </MagicalCard>
         </div>
 
-        {namedChars.length > 0 && (
-          <MagicalCard glowColor="rgba(168, 85, 247, 0.3)">
-            <div className="text-lg font-semibold text-white mb-3">Available Characters</div>
-            <div className="flex flex-wrap gap-2">
-              {namedChars.map((c) => (
+        {characters.length > 0 && (
+          <MagicalCard>
+            <h3 className="text-white font-semibold mb-4 text-xl">Available Characters</h3>
+            <p className="text-white/80 mb-4">
+              Your family characters will be included automatically when relevant:
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {characters.filter(c => c.name.trim()).map((char) => (
                 <span
-                  key={c.id}
-                  className="px-3 py-2 bg-purple-600/30 border border-purple-400/30 rounded-xl text-white text-sm"
+                  key={char.id}
+                  className="px-4 py-2 bg-white/10 rounded-lg text-white/90 border border-white/20"
                 >
-                  {c.name} {c.isGuest && "(Guest)"}
+                  {char.name} {char.isGuest ? "(Guest)" : ""}
                 </span>
               ))}
             </div>
-            <div className="text-sm text-white/60 mt-2">
-              💡 AI will include these characters if they fit your story idea
-            </div>
           </MagicalCard>
         )}
-      </div>
 
-      <div className="flex gap-4">
-        <button
-          onClick={() => go("builder")}
-          className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
-        >
-          ← Back
-        </button>
-        <button
-          onClick={generate}
-          disabled={!canGenerate}
-          className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold text-xl rounded-xl shadow-2xl transition-all duration-300 hover:shadow-3xl transform hover:scale-105 disabled:transform-none disabled:shadow-none"
-        >
-          🤖 Generate Story
-        </button>
+        <div className="flex justify-center gap-6">
+          <button
+            onClick={() => go("builder")}
+            className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                     border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                     hover:transform hover:scale-105"
+          >
+            Back
+          </button>
+          <button
+            onClick={generate}
+            disabled={!prompt.trim()}
+            className="px-8 py-4 bg-blue-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
+                     border border-blue-300/30 shadow-xl hover:bg-blue-500/40 transition-all duration-300
+                     hover:transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed
+                     disabled:hover:transform-none"
+          >
+            Generate Story
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
-function ThemeListScreen({
-  pickTheme,
-  go,
-}: {
-  pickTheme: (t: ThemeId) => void
-  go: (s: Screen) => void
+function ThemeListScreen({ 
+  pickTheme, 
+  go 
+}: { 
+  pickTheme: (theme: ThemeId) => void
+  go: (s: Screen) => void 
 }) {
   return (
-    <div className="flex flex-col items-center">
-      {/* THEME LIST: NO TOMMY LOGO - Shows theme images instead */}
-      
-      <h1 className="text-5xl font-bold text-white text-center mb-4">Magical Themes</h1>
-      <p className="text-xl text-white/90 mb-12">Pick a world for your next adventure</p>
+    <div className="max-w-6xl mx-auto">
+      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
+        Choose Your Adventure Theme
+      </h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-6xl mb-12">
-        {THEME_ORDER.map((t) => (
-          <MagicalCard key={t} glowColor="rgba(168, 85, 247, 0.3)">
-            <button
-              onClick={() => pickTheme(t)}
-              className="w-full h-full text-center"
-            >
-              <div className="w-full max-w-[280px] mx-auto aspect-square relative overflow-hidden rounded-2xl mb-6">
-                <img
-                  src={CLOUDINARY.themes[t]}
-                  alt={THEME_LABEL[t]}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <div className="text-2xl font-bold text-white">{THEME_LABEL[t]}</div>
-            </button>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {THEME_ORDER.map((theme) => (
+          <MagicalCard 
+            key={theme} 
+            onClick={() => pickTheme(theme)}
+            className="text-center hover:scale-110 transition-transform duration-300"
+            glowColor="rgba(255, 255, 255, 0.15)"
+          >
+            <img
+              src={CLOUDINARY.themes[theme]}
+              alt={THEME_LABEL[theme]}
+              className="w-full h-48 object-cover rounded-2xl mb-6 shadow-lg"
+            />
+            <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
+              {THEME_LABEL[theme]}
+            </h3>
           </MagicalCard>
         ))}
       </div>
 
-      <button
-        onClick={() => go("builder")}
-        className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
-      >
-        ← Back
-      </button>
+      <div className="flex justify-center mt-12">
+        <button
+          onClick={() => go("builder")}
+          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                   hover:transform hover:scale-105"
+        >
+          Back to Story Builder
+        </button>
+      </div>
     </div>
   )
 }
 
-function PrepareScreen(props: {
+function PrepareScreen({
+  theme,
+  characters,
+  selectedIds,
+  toggle,
+  customAngle,
+  setCustomAngle,
+  back,
+  next,
+}: {
   theme: ThemeId
   characters: Character[]
   selectedIds: string[]
   toggle: (id: string) => void
   customAngle: string
-  setCustomAngle: (v: string) => void
+  setCustomAngle: (angle: string) => void
   back: () => void
   next: () => void
 }) {
-  const { theme, characters, selectedIds, toggle, customAngle, setCustomAngle, back, next } = props
-  const named = characters.filter((c) => c.name.trim())
-  const canProceed = selectedIds.length > 0 || named.length === 0
+  const availableCharacters = characters.filter((c) => c.name.trim())
 
   return (
-    <div className="flex flex-col items-center">
-      {/* PREPARE: Shows theme image, NO Tommy logo */}
-      <div className="w-full max-w-[600px] mb-8">
-        <img
-          src={CLOUDINARY.themes[theme]}
-          alt={THEME_LABEL[theme]}
-          className="w-full h-auto rounded-3xl shadow-2xl"
-        />
+    <div className="max-w-4xl mx-auto">
+      {/* SPECIAL: Theme image replaces Tommy's logo on this page */}
+      <div className="flex justify-center mb-8">
+        <div className="relative bg-white/15 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/30">
+          <img
+            src={CLOUDINARY.themes[theme]}
+            alt={THEME_LABEL[theme]}
+            className="w-full max-w-[512px] h-auto drop-shadow-2xl filter brightness-110 relative z-10"
+            style={{ imageRendering: 'auto' }}
+          />
+        </div>
       </div>
-      
-      <h1 className="text-4xl font-bold text-white mb-4">{THEME_LABEL[theme]}</h1>
-      <p className="text-xl text-white/90 text-center mb-8">
-        Choose who joins Tommy on this magical adventure
-      </p>
 
-      <div className="w-full max-w-3xl space-y-4 mb-8">
-        {named.length === 0 && (
-          <MagicalCard>
-            <p className="text-center text-white/70 italic text-lg">
-              No characters yet — Tommy will go on a solo adventure. You can add family members anytime!
-            </p>
-          </MagicalCard>
-        )}
-        {named.map((c) => {
-          const selected = selectedIds.includes(c.id)
-          return (
-            <MagicalCard key={c.id} glowColor={selected ? "rgba(168, 85, 247, 0.4)" : "rgba(255, 255, 255, 0.1)"}>
-              <button
-                onClick={() => toggle(c.id)}
-                className="w-full text-left"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all duration-300 ${
-                      selected ? "bg-purple-600 border-purple-600" : "border-white/40"
-                    }`}
-                  >
-                    {selected && <span className="text-white text-lg">✓</span>}
-                  </div>
-                  <div>
-                    <div className="text-xl font-semibold text-white">
-                      {c.name}{" "}
-                      {c.isGuest && <span className="text-sm text-amber-400 ml-2">(Guest)</span>}
+      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
+        Prepare Your {THEME_LABEL[theme]} Story
+      </h1>
+
+      {availableCharacters.length > 0 && (
+        <MagicalCard className="mb-8">
+          <h3 className="text-2xl font-bold text-white mb-6">Select Characters for This Story</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {availableCharacters.map((char) => {
+              const isSelected = selectedIds.includes(char.id)
+              return (
+                <div
+                  key={char.id}
+                  onClick={() => toggle(char.id)}
+                  className={`
+                    p-4 rounded-xl border-2 cursor-pointer transition-all duration-300
+                    ${isSelected
+                      ? "bg-white/20 border-white/50 shadow-lg"
+                      : "bg-white/5 border-white/20 hover:bg-white/10 hover:border-white/30"
+                    }
+                  `}
+                >
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}} // Handled by parent div onClick
+                      className="mr-4 w-5 h-5 accent-white"
+                    />
+                    <div className="text-white">
+                      <div className="font-semibold text-lg">{char.name}</div>
+                      {!char.isGuest && (
+                        <div className="text-sm text-white/70">
+                          {char.age && `Age: ${char.age}`}
+                          {char.age && char.personality && " • "}
+                          {char.personality && `${char.personality}`}
+                        </div>
+                      )}
+                      {char.isGuest && (
+                        <div className="text-sm text-blue-300">Guest Character</div>
+                      )}
                     </div>
-                    {!c.isGuest && (c.age || c.personality) && (
-                      <div className="text-sm text-white/60">
-                        {[c.age && `age ${c.age}`, c.personality].filter(Boolean).join(" · ")}
-                      </div>
-                    )}
                   </div>
                 </div>
-              </button>
-            </MagicalCard>
-          )
-        })}
-      </div>
+              )
+            })}
+          </div>
+        </MagicalCard>
+      )}
 
-      <MagicalCard className="w-full max-w-3xl mb-8">
-        <label className="block text-lg font-semibold text-white mb-2">
-          What's the story about? (optional)
-        </label>
+      <MagicalCard className="mb-8">
+        <h3 className="text-2xl font-bold text-white mb-6">Custom Story Angle (Optional)</h3>
         <textarea
           value={customAngle}
           onChange={(e) => setCustomAngle(e.target.value)}
-          placeholder="e.g. Emma loses her favourite toy and everyone helps find it"
+          placeholder="Add your own twist to this theme... (e.g., 'Make it about learning to share')"
           rows={3}
-          className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none resize-none text-lg"
+          className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                   text-white placeholder-white/60 focus:outline-none focus:ring-2 
+                   focus:ring-white/30 text-lg resize-none"
         />
       </MagicalCard>
 
-      <div className="flex gap-4">
+      <div className="flex justify-center gap-6">
         <button
           onClick={back}
-          className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
+          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                   hover:transform hover:scale-105"
         >
-          ← Themes
+          Back to Themes
         </button>
         <button
           onClick={next}
-          disabled={!canProceed}
-          className="px-8 py-3 bg-pink-600 hover:bg-pink-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105 disabled:transform-none"
+          className="px-8 py-4 bg-purple-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-purple-300/30 shadow-xl hover:bg-purple-500/40 transition-all duration-300
+                   hover:transform hover:scale-105"
         >
-          Review & Generate →
+          Review & Generate
         </button>
       </div>
     </div>
   )
 }
 
-function ReviewScreen(props: {
+function ReviewScreen({
+  theme,
+  storyTitle,
+  setStoryTitle,
+  storyPromptUser,
+  setStoryPromptUser,
+  imagePrompt,
+  setImagePrompt,
+  back,
+  generate,
+}: {
   theme: ThemeId
   storyTitle: string
-  setStoryTitle: (v: string) => void
+  setStoryTitle: (title: string) => void
   storyPromptUser: string
-  setStoryPromptUser: (v: string) => void
+  setStoryPromptUser: (prompt: string) => void
   imagePrompt: string
-  setImagePrompt: (v: string) => void
+  setImagePrompt: (prompt: string) => void
   back: () => void
   generate: () => void
 }) {
-  const {
-    theme,
-    storyTitle,
-    setStoryTitle,
-    storyPromptUser,
-    setStoryPromptUser,
-    imagePrompt,
-    setImagePrompt,
-    back,
-    generate,
-  } = props
-
   return (
-    <div className="flex flex-col items-center">
-      {/* NO TOMMY LOGO HERE - it's in the header */}
-      
-      <h1 className="text-5xl font-bold text-white text-center mb-4">Review & Edit</h1>
-      <p className="text-xl text-white/90 text-center mb-12 max-w-3xl">
-        Perfect your prompts before we create your magical story
-      </p>
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
+        Review & Edit Your Story Details
+      </h1>
 
-      <div className="w-full max-w-4xl space-y-8 mb-12">
+      <div className="space-y-8">
         <MagicalCard>
-          <label className="block text-lg font-semibold text-white mb-3">Story Title</label>
+          <h3 className="text-2xl font-bold text-white mb-6">Story Title</h3>
           <input
+            type="text"
             value={storyTitle}
             onChange={(e) => setStoryTitle(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none text-xl font-semibold"
+            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
+                     focus:ring-white/30 text-lg"
           />
         </MagicalCard>
-        
+
         <MagicalCard>
-          <label className="block text-lg font-semibold text-white mb-3">
-            Story Prompt (GPT-4o)
-          </label>
+          <h3 className="text-2xl font-bold text-white mb-6">Story Direction</h3>
           <textarea
             value={storyPromptUser}
             onChange={(e) => setStoryPromptUser(e.target.value)}
-            rows={10}
-            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none font-mono text-sm resize-none"
+            rows={6}
+            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
+                     focus:ring-white/30 text-lg resize-none"
           />
         </MagicalCard>
-        
+
         <MagicalCard>
-          <label className="block text-lg font-semibold text-white mb-3">
-            Cover Image Prompt (DALL-E 3)
-          </label>
+          <h3 className="text-2xl font-bold text-white mb-6">Cover Image Description</h3>
           <textarea
             value={imagePrompt}
             onChange={(e) => setImagePrompt(e.target.value)}
-            rows={8}
-            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none font-mono text-sm resize-none"
+            rows={4}
+            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
+                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
+                     focus:ring-white/30 text-lg resize-none"
           />
         </MagicalCard>
-      </div>
 
-      <div className="flex gap-4">
-        <button
-          onClick={back}
-          className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
-        >
-          ← Characters
-        </button>
-        <button
-          onClick={generate}
-          className="px-8 py-4 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-semibold text-xl rounded-xl shadow-2xl transition-all duration-300 hover:shadow-3xl transform hover:scale-105"
-        >
-          ✨ Generate {THEME_LABEL[theme]} Adventure
-        </button>
+        <div className="flex justify-center gap-6">
+          <button
+            onClick={back}
+            className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                     border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                     hover:transform hover:scale-105"
+          >
+            Back
+          </button>
+          <button
+            onClick={generate}
+            className="px-8 py-4 bg-green-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
+                     border border-green-300/30 shadow-xl hover:bg-green-500/40 transition-all duration-300
+                     hover:transform hover:scale-105"
+          >
+            Generate Story
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
-function GeneratingScreen({
-  stage,
-  error,
-  back,
-}: {
+function GeneratingScreen({ 
+  stage, 
+  error, 
+  back 
+}: { 
   stage: "idle" | "story" | "image" | "done"
   error: string | null
   back: () => void
 }) {
-  const label = useMemo(() => {
-    switch (stage) {
-      case "story":
-        return "Writing your magical story..."
-      case "image":
-        return "Painting the perfect cover..."
-      case "done":
-        return "Adding the finishing touches..."
-      default:
-        return "Beginning the magic..."
-    }
-  }, [stage])
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto text-center">
+        <MagicalCard className="p-12">
+          <div className="text-6xl mb-8">😞</div>
+          <h1 className="text-3xl font-bold text-white mb-6 drop-shadow-lg">
+            Oops! Something went wrong
+          </h1>
+          <p className="text-white/80 text-lg mb-8">
+            {error}
+          </p>
+          <button
+            onClick={back}
+            className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                     border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                     hover:transform hover:scale-105"
+          >
+            Try Again
+          </button>
+        </MagicalCard>
+      </div>
+    )
+  }
+
+  const stageMessages = {
+    idle: "Getting ready...",
+    story: "Writing your magical story...",
+    image: "Painting the perfect cover...",
+    done: "Your story is ready!"
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center py-20">
-      {/* NO TOMMY LOGO HERE - it's in the header */}
-      
-      {!error && (
-        <MagicalCard className="text-center">
-          <div className="w-20 h-20 mx-auto mb-8">
-            <div className="w-full h-full border-4 border-white/30 border-t-white rounded-full animate-spin" />
-          </div>
-          <p className="text-3xl font-semibold text-white mb-3">{label}</p>
-          <p className="text-lg text-white/70">
-            Creating something truly special takes about 20–30 seconds
-          </p>
-        </MagicalCard>
-      )}
-      
-      {error && (
-        <MagicalCard className="max-w-2xl bg-red-500/20 border-red-400/30">
-          <div className="text-center">
-            <div className="text-6xl mb-4">⚠️</div>
-            <p className="text-2xl font-semibold text-white mb-4">Something went wrong</p>
-            <p className="text-white/80 mb-6 font-mono text-sm break-words">{error}</p>
-            <button
-              onClick={back}
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all duration-300"
-            >
-              ← Back to Review
-            </button>
-          </div>
-        </MagicalCard>
-      )}
+    <div className="max-w-2xl mx-auto text-center">
+      <MagicalCard className="p-12">
+        <div className="animate-spin w-16 h-16 border-4 border-white/30 border-t-white rounded-full mx-auto mb-8"></div>
+        <h1 className="text-3xl font-bold text-white mb-6 drop-shadow-lg">
+          Creating Your Story
+        </h1>
+        <p className="text-white/80 text-xl">
+          {stageMessages[stage]}
+        </p>
+      </MagicalCard>
     </div>
   )
 }
 
-function ReadingScreen({ story, go }: { story: SavedStory; go: (s: Screen) => void }) {
-  const paragraphs = story.body.split(/\n{2,}/).filter((p) => p.trim())
-
+function ReadingScreen({ 
+  story, 
+  go 
+}: { 
+  story: SavedStory
+  go: (s: Screen) => void 
+}) {
   return (
-    <div className="flex flex-col items-center">
-      {/* NO TOMMY LOGO HERE - it's in the header */}
-      
-      <MagicalCard className="w-full max-w-4xl overflow-hidden p-0">
-        <img src={story.coverUrl} alt={story.title} className="w-full h-auto" />
-        <div className="p-8">
-          <h1 className="text-4xl font-bold text-white mb-8 text-center">{story.title}</h1>
-          <div className="space-y-6 text-white leading-relaxed text-lg">
-            {paragraphs.map((p, i) => (
-              <p key={i}>{p}</p>
-            ))}
-          </div>
-          {story.isManual && (
-            <div className="mt-8 p-4 bg-green-500/20 border border-green-400/30 rounded-xl text-center">
-              <span className="text-green-400 font-semibold">✍️ User-Written Story</span>
-            </div>
-          )}
+    <div className="max-w-4xl mx-auto">
+      <MagicalCard className="text-center mb-8">
+        <img
+          src={story.coverUrl}
+          alt={`Cover for ${story.title}`}
+          className="w-full max-w-md mx-auto rounded-2xl shadow-2xl mb-8"
+        />
+        <h1 className="text-4xl font-bold text-white mb-6 drop-shadow-lg">
+          {story.title}
+        </h1>
+        {story.isManual && (
+          <span className="inline-block px-4 py-2 bg-green-500/30 rounded-lg text-green-200 text-sm mb-6">
+            ✍️ Written by You
+          </span>
+        )}
+      </MagicalCard>
+
+      <MagicalCard className="mb-8">
+        <div className="prose prose-lg prose-invert max-w-none">
+          {story.body.split('\n\n').map((paragraph, idx) => (
+            <p key={idx} className="text-white/90 text-lg leading-relaxed mb-6">
+              {paragraph}
+            </p>
+          ))}
         </div>
       </MagicalCard>
 
-      <div className="mt-12 flex flex-wrap gap-4 justify-center">
+      <div className="flex justify-center gap-6">
         <button
           onClick={() => go("home")}
-          className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
+          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                   hover:transform hover:scale-105"
         >
-          ← Home
+          Home
         </button>
         <button
           onClick={() => go("library")}
-          className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl"
+          className="px-8 py-4 bg-blue-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-blue-300/30 shadow-xl hover:bg-blue-500/40 transition-all duration-300
+                   hover:transform hover:scale-105"
         >
-          📚 Library
+          Library
         </button>
         <button
           onClick={() => go("builder")}
-          className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl"
+          className="px-8 py-4 bg-purple-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-purple-300/30 shadow-xl hover:bg-purple-500/40 transition-all duration-300
+                   hover:transform hover:scale-105"
         >
-          ✨ Create Another
+          Create Another
         </button>
       </div>
     </div>
   )
 }
 
-function LibraryScreen({
-  stories,
-  open,
-  remove,
-  go,
+function LibraryScreen({ 
+  stories, 
+  open, 
+  remove, 
+  go 
 }: {
   stories: SavedStory[]
-  open: (s: SavedStory) => void
+  open: (story: SavedStory) => void
   remove: (id: string) => void
   go: (s: Screen) => void
 }) {
-  return (
-    <div className="flex flex-col items-center">
-      {/* NO TOMMY LOGO HERE - it's in the header */}
-      
-      <h1 className="text-5xl font-bold text-white mb-4">Story Library</h1>
-      <p className="text-xl text-white/90 mb-12">Your magical collection awaits</p>
-
-      {stories.length === 0 ? (
-        <MagicalCard className="text-center">
-          <div className="flex justify-center mb-6">
-            <TommyIcon iconKey="storyLibrary" alt="Empty Library" />
+  if (stories.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto text-center">
+        <h1 className="text-4xl font-bold text-white mb-12 drop-shadow-lg">
+          Your Story Library
+        </h1>
+        
+        <MagicalCard className="p-12">
+          <div className="flex justify-center mb-8">
+            <TommyIcon iconKey="storyLibrary" alt="Empty Library" className="opacity-50" />
           </div>
-          <p className="text-xl text-white/70 italic mb-6">No stories yet — let's create your first magical adventure!</p>
+          <h2 className="text-2xl font-bold text-white mb-6">No stories yet!</h2>
+          <p className="text-white/80 text-lg mb-8">
+            Create your first magical story to start building your library.
+          </p>
           <button
             onClick={() => go("builder")}
-            className="px-8 py-4 bg-pink-600 hover:bg-pink-700 text-white font-semibold text-xl rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105"
+            className="px-8 py-4 bg-purple-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
+                     border border-purple-300/30 shadow-xl hover:bg-purple-500/40 transition-all duration-300
+                     hover:transform hover:scale-105"
           >
-            ✨ Create a Story
+            Create Your First Story
           </button>
         </MagicalCard>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-7xl mb-12">
-          {stories.map((s) => (
-            <MagicalCard key={s.id} className="overflow-hidden p-0">
-              <button onClick={() => open(s)} className="block w-full text-left">
-                <img src={s.coverUrl} alt={s.title} className="w-full aspect-square object-cover" />
-                <div className="p-6">
-                  <div className="font-bold text-white text-lg line-clamp-2 mb-2">
-                    {s.title}
-                    {s.isManual && <span className="text-xs text-green-400 ml-2">✍️</span>}
-                  </div>
-                  <div className="text-sm text-white/60">
-                    {new Date(s.createdAt).toLocaleDateString()} · {
-                      s.theme === "custom" ? "Custom" : THEME_LABEL[s.theme as ThemeId]
-                    }
-                  </div>
-                </div>
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm(`Delete "${s.title}"? This cannot be undone.`)) remove(s.id)
-                }}
-                className="w-full py-3 text-sm text-red-400 hover:bg-red-500/20 border-t border-white/10 transition-all duration-300"
-              >
-                Delete Story
-              </button>
-            </MagicalCard>
-          ))}
-        </div>
-      )}
 
-      <button
-        onClick={() => go("home")}
-        className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
-      >
-        ← Home
-      </button>
+        <div className="mt-12">
+          <button
+            onClick={() => go("home")}
+            className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                     border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                     hover:transform hover:scale-105"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
+        Your Story Library
+      </h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+        {stories.map((story) => (
+          <MagicalCard 
+            key={story.id}
+            className="group cursor-pointer hover:scale-105 transition-transform duration-300"
+            onClick={() => open(story)}
+          >
+            <img
+              src={story.coverUrl}
+              alt={`Cover for ${story.title}`}
+              className="w-full h-48 object-cover rounded-2xl mb-4 shadow-lg"
+            />
+            <h3 className="text-xl font-bold text-white mb-3 line-clamp-2 group-hover:text-yellow-200 transition-colors">
+              {story.title}
+            </h3>
+            <div className="flex items-center justify-between text-sm text-white/70 mb-4">
+              <span>
+                {new Date(story.createdAt).toLocaleDateString()}
+              </span>
+              {story.isManual && (
+                <span className="px-2 py-1 bg-green-500/20 rounded text-green-300">
+                  ✍️ Manual
+                </span>
+              )}
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                if (confirm("Are you sure you want to delete this story?")) {
+                  remove(story.id)
+                }
+              }}
+              className="w-full px-4 py-2 bg-red-500/20 backdrop-blur-md rounded-xl text-red-200 
+                       hover:bg-red-500/30 transition-all duration-300 border border-red-300/30"
+            >
+              Delete
+            </button>
+          </MagicalCard>
+        ))}
+      </div>
+
+      <div className="flex justify-center gap-6">
+        <button
+          onClick={() => go("home")}
+          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
+                   hover:transform hover:scale-105"
+        >
+          Home
+        </button>
+        <button
+          onClick={() => go("builder")}
+          className="px-8 py-4 bg-purple-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
+                   border border-purple-300/30 shadow-xl hover:bg-purple-500/40 transition-all duration-300
+                   hover:transform hover:scale-105"
+        >
+          Create Another Story
+        </button>
+      </div>
     </div>
   )
 }
