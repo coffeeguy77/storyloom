@@ -25,6 +25,9 @@ interface Story {
   createdAt: string
 }
 
+// Define theme types for TypeScript
+type ThemeType = "space" | "jungle" | "ocean" | "dinosaur" | "pirate" | "monster-trucks"
+
 // Cloudinary configuration
 const CLOUDINARY_CLOUD_NAME = "dzx6x1hou"
 const CLOUDINARY_API_KEY = "228818781471743"
@@ -32,8 +35,8 @@ const CLOUDINARY_API_KEY = "228818781471743"
 // Tommy's main logo URL from Cloudinary
 const TOMMY_LOGO_URL = "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/tommy-logo.png"
 
-// Theme images from Cloudinary 
-const THEME_IMAGES = {
+// Theme images from Cloudinary with proper typing
+const THEME_IMAGES: Record<ThemeType, string> = {
   space: "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/themes/space.png",
   jungle: "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/themes/jungle.png",
   ocean: "https://res.cloudinary.com/dzx6x1hou/image/upload/storyloom/themes/ocean.png",
@@ -46,7 +49,7 @@ export default function StoryLoomComplete() {
   const [currentStep, setCurrentStep] = useState<"start" | "characters" | "themes" | "story" | "generating" | "reading" | "library" | "manage-characters" | "choose-theme">("start")
   const [savedCharacters, setSavedCharacters] = useState<Character[]>([])
   const [activeCharacters, setActiveCharacters] = useState<Character[]>([])
-  const [selectedTheme, setSelectedTheme] = useState<string>("space")
+  const [selectedTheme, setSelectedTheme] = useState<ThemeType>("space")
   const [currentStory, setCurrentStory] = useState<Story | null>(null)
   const [savedStories, setSavedStories] = useState<Story[]>([])
   const [logoLoaded, setLogoLoaded] = useState(false)
@@ -54,8 +57,8 @@ export default function StoryLoomComplete() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<string>("")
 
-  // Tommy's magical story prompts by theme
-  const storyPromptsByTheme = {
+  // Tommy's magical story prompts by theme with proper typing
+  const storyPromptsByTheme: Record<ThemeType, string[]> = {
     space: [
       "goes on a space adventure with Tommy and his dragon friends",
       "discovers a magical spaceship that travels to rainbow planets",
@@ -171,8 +174,8 @@ export default function StoryLoomComplete() {
     }
   }
 
-  // Generate AI image based on selected theme
-  const generateAIBookCover = async (prompt: string, theme: string): Promise<string> => {
+  // Generate AI image based on selected theme with proper typing
+  const generateAIBookCover = async (prompt: string, theme: ThemeType): Promise<string> => {
     setUploadProgress("🎨 Creating magical book cover...")
     
     const canvas = document.createElement('canvas')
@@ -183,8 +186,8 @@ export default function StoryLoomComplete() {
     canvas.width = 400
     canvas.height = 600
     
-    // Theme-specific gradients
-    const themeGradients = {
+    // Theme-specific gradients with proper typing
+    const themeGradients: Record<ThemeType, string[]> = {
       space: ['#1E1B4B', '#7C3AED', '#EC4899', '#F59E0B'],
       jungle: ['#065F46', '#059669', '#10B981', '#A3E635'],
       ocean: ['#1E3A8A', '#3B82F6', '#06B6D4', '#A5F3FC'],
@@ -193,7 +196,8 @@ export default function StoryLoomComplete() {
       "monster-trucks": ['#1F2937', '#EF4444', '#F59E0B', '#FDE047']
     }
     
-    const colors = themeGradients[theme] || themeGradients.space
+    // Fixed TypeScript error: proper indexing with fallback
+    const colors = themeGradients[theme as keyof typeof themeGradients] || themeGradients.space
     
     // Create theme gradient
     const gradient = ctx.createLinearGradient(0, 0, 400, 600)
@@ -223,8 +227,8 @@ export default function StoryLoomComplete() {
     ctx.font = 'bold 16px Arial'
     ctx.fillText(`Tommy's ${theme.charAt(0).toUpperCase() + theme.slice(1)} Adventure`, 200, 115)
     
-    // Theme-specific emojis
-    const themeEmojis = {
+    // Theme-specific emojis with proper typing
+    const themeEmojis: Record<ThemeType, string[]> = {
       space: ['🚀', '👨‍🚀', '🌟', '🛸', '👽', '🌌'],
       jungle: ['🦁', '🐵', '🌿', '🦜', '🐍', '🌺'],
       ocean: ['🐠', '🐙', '🏴‍☠️', '⚓', '🦈', '🏝️'],
@@ -233,7 +237,7 @@ export default function StoryLoomComplete() {
       "monster-trucks": ['🚗', '🏁', '⚡', '🏆', '🛞', '🔧']
     }
     
-    const emojis = themeEmojis[theme] || themeEmojis.space
+    const emojis = themeEmojis[theme as keyof typeof themeEmojis] || themeEmojis.space
     
     // Add theme elements
     ctx.font = '60px Arial'
@@ -269,7 +273,7 @@ export default function StoryLoomComplete() {
     
     try {
       // Get theme-specific prompts
-      const prompts = storyPromptsByTheme[selectedTheme] || storyPromptsByTheme.space
+      const prompts = storyPromptsByTheme[selectedTheme]
       const characterNames = activeCharacters.map(c => c.name).join(" and ")
       const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)]
       const storyTitle = `${characterNames} and Tommy's ${selectedTheme.charAt(0).toUpperCase() + selectedTheme.slice(1)} Adventure`
@@ -285,8 +289,8 @@ export default function StoryLoomComplete() {
         cloudinaryUrl = await uploadImageToCloudinary(aiGeneratedImage, `${storyTitle.replace(/\s+/g, '_').toLowerCase()}_cover.png`)
       }
       
-      // Theme-specific story content
-      const themeStories = {
+      // Theme-specific story content with proper typing
+      const themeStories: Record<ThemeType, string> = {
         space: `Once upon a time, in Tommy's magical space world, ${characterNames} ${randomPrompt}. They zoomed past rainbow planets, met friendly aliens who spoke in musical tones, and discovered that the universe is full of friendship and wonder. With Tommy's wise dragon as their guide, they learned that even in the vastness of space, love and kindness can bridge any distance.`,
         jungle: `Deep in Tommy's enchanted jungle, ${characterNames} ${randomPrompt}. They swung on vines with colorful parrots, discovered hidden waterfalls that sparkled like diamonds, and learned the ancient secrets of the forest from wise old trees. Tommy's dragon friend helped them understand that nature is full of magic for those who know how to listen.`,
         ocean: `Across Tommy's magical ocean, ${characterNames} ${randomPrompt}. They sailed on ships with rainbow sails, dove deep to visit underwater kingdoms, and met mermaids who taught them the songs of the sea. With Tommy's sea dragon by their side, they discovered that the ocean holds treasures beyond imagination.`,
@@ -374,6 +378,13 @@ export default function StoryLoomComplete() {
     }
   }
 
+  // Helper function to set theme with proper typing
+  const handleThemeChange = (theme: string) => {
+    if (theme in THEME_IMAGES) {
+      setSelectedTheme(theme as ThemeType)
+    }
+  }
+
   // START SCREEN WITH TOMMY'S CLOUDINARY LOGO
   if (currentStep === "start") {
     return (
@@ -419,7 +430,7 @@ export default function StoryLoomComplete() {
                   <h1 className="text-5xl font-bold text-center mb-4">
                     StoryLoom
                   </h1>
-                  <p className="text-2xl font-medium mb-6">Tommy's Magical World</p>
+                  <p className="text-2xl font-medium mb-6">Tommy&apos;s Magical World</p>
                   <div className="flex gap-4 text-5xl mb-4">
                     <span>🐲</span>
                     <span>🐕</span>
@@ -434,7 +445,7 @@ export default function StoryLoomComplete() {
               
               {/* Enhanced Logo Description Badge */}
               <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white px-10 py-4 rounded-full text-center shadow-2xl border-2 border-white/30">
-                <p className="font-bold text-xl">Tommy's Magical Universe</p>
+                <p className="font-bold text-xl">Tommy&apos;s Magical Universe</p>
                 <p className="text-sm text-yellow-200">🐲 Dragons • 🐕 Best Friends • 🌈 Epic Adventures • ✨ Pure Magic</p>
               </div>
             </div>
@@ -454,7 +465,7 @@ export default function StoryLoomComplete() {
           <div className="flex flex-wrap gap-3 mt-8 justify-center">
             {logoLoaded && !logoError && (
               <div className="bg-green-500/30 backdrop-blur-sm text-white px-6 py-3 rounded-full border-2 border-green-400/50 shadow-lg">
-                <p className="text-sm font-bold">✅ Tommy's Logo from Cloudinary!</p>
+                <p className="text-sm font-bold">✅ Tommy&apos;s Logo from Cloudinary!</p>
               </div>
             )}
             {logoError && (
@@ -487,7 +498,7 @@ export default function StoryLoomComplete() {
             {activeCharacters.length > 0 ? (
               <div className="space-y-8">
                 <h2 className="text-4xl font-bold text-white mb-8 text-center">
-                  ✨ Ready for Tommy's Magical World! 🌈
+                  ✨ Ready for Tommy&apos;s Magical World! 🌈
                 </h2>
                 
                 <div className="bg-white/25 rounded-2xl p-8 border border-white/40">
@@ -500,7 +511,7 @@ export default function StoryLoomComplete() {
                     {Object.entries(THEME_IMAGES).map(([theme, imageUrl]) => (
                       <div
                         key={theme}
-                        onClick={() => setSelectedTheme(theme)}
+                        onClick={() => handleThemeChange(theme)}
                         className={`relative cursor-pointer rounded-xl overflow-hidden transition-all duration-300 border-4 ${
                           selectedTheme === theme 
                             ? "border-yellow-400 scale-105 shadow-2xl" 
@@ -554,7 +565,7 @@ export default function StoryLoomComplete() {
             ) : (
               <div className="space-y-10 text-center">
                 <h2 className="text-5xl font-bold text-white mb-6">
-                  Welcome to Tommy's StoryLoom! 🌈✨
+                  Welcome to Tommy&apos;s StoryLoom! 🌈✨
                 </h2>
                 <p className="text-2xl text-white/95 mb-8 leading-relaxed">
                   Join Tommy, his dragon friends, and magical companions on incredible adventures through six amazing worlds!
@@ -580,7 +591,7 @@ export default function StoryLoomComplete() {
                   onClick={() => setCurrentStep("manage-characters")}
                   className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 hover:from-yellow-300 hover:via-orange-300 hover:to-red-300 text-purple-900 px-12 py-6 rounded-2xl font-bold text-2xl shadow-2xl transition-all transform hover:scale-105 border-4 border-white/30"
                 >
-                  🌟 Add Your Family to Tommy's World
+                  🌟 Add Your Family to Tommy&apos;s World
                 </button>
               </div>
             )}
@@ -599,7 +610,7 @@ export default function StoryLoomComplete() {
         {/* Enhanced Footer */}
         <div className="absolute bottom-6 left-6 right-6 flex justify-between items-center text-sm text-white/80">
           <div className="bg-black/40 backdrop-blur-sm px-6 py-3 rounded-xl flex items-center gap-3 border border-white/20">
-            <span>🖼️ Tommy's Logo:</span>
+            <span>🖼️ Tommy&apos;s Logo:</span>
             <span className="font-bold text-green-400">{logoLoaded && !logoError ? 'Cloudinary ✅' : logoError ? 'Error ❌' : 'Loading ⏳'}</span>
           </div>
           <div className="bg-black/40 backdrop-blur-sm px-6 py-3 rounded-xl border border-white/20">
@@ -639,7 +650,7 @@ export default function StoryLoomComplete() {
           
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-6 border border-white/20">
             <p className="text-white/90 mb-4 text-lg">
-              Add your family members to create personalized adventures in Tommy's magical world! 🐲✨
+              Add your family members to create personalized adventures in Tommy&apos;s magical world! 🐲✨
             </p>
           </div>
 
@@ -709,188 +720,6 @@ export default function StoryLoomComplete() {
     )
   }
 
-  // STORY READING VIEW
-  if (currentStep === "reading" && currentStory) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
-        {/* Small Header Logo */}
-        <div className="flex items-center justify-center mb-6">
-          <img
-            src={TOMMY_LOGO_URL}
-            alt="StoryLoom"
-            className="h-16 w-24 object-contain rounded-lg border-2 border-white/40 bg-white/10"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none'
-            }}
-          />
-        </div>
-
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-white">Your Magical Story</h1>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setCurrentStep("library")}
-                className="bg-white/20 text-white px-6 py-3 rounded-xl hover:bg-white/30 transition-all border border-white/30"
-              >
-                📚 Library
-              </button>
-              <button
-                onClick={() => setCurrentStep("start")}
-                className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-400 hover:to-green-500 transition-all"
-              >
-                ✨ Create New Story
-              </button>
-            </div>
-          </div>
-          
-          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
-            <div className="flex flex-col lg:flex-row gap-8">
-              {/* Book Cover */}
-              <div className="lg:w-1/3">
-                <div className="aspect-[2/3] bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white/30">
-                  {currentStory.coverImageUrl ? (
-                    <img 
-                      src={currentStory.coverImageUrl} 
-                      alt={`Cover for ${currentStory.title}`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-purple-200 to-pink-200 flex items-center justify-center text-purple-600">
-                      <div className="text-center">
-                        <div className="text-6xl mb-4">📖</div>
-                        <p className="text-lg font-bold">Generated Cover</p>
-                        <p className="text-sm">Tommy's Style</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 text-center">
-                  <p className="text-white/80 text-sm font-medium">
-                    {currentStory.coverImageUrl?.includes('cloudinary.com') 
-                      ? '☁️ Stored on Cloudinary' 
-                      : '💾 Stored Locally'
-                    }
-                  </p>
-                </div>
-              </div>
-              
-              {/* Story Content */}
-              <div className="lg:w-2/3">
-                <h2 className="text-3xl font-bold text-white mb-6">{currentStory.title}</h2>
-                <div className="bg-white/20 rounded-2xl p-8 border border-white/30">
-                  <p className="text-white text-lg leading-relaxed font-medium">
-                    {currentStory.fullText}
-                  </p>
-                </div>
-                
-                <div className="mt-6 flex flex-wrap gap-4 text-sm text-white/80">
-                  <span className="bg-white/20 px-3 py-1 rounded-full">📝 {currentStory.wordCount} words</span>
-                  <span className="bg-white/20 px-3 py-1 rounded-full">🎭 {currentStory.characters.map(c => c.name).join(", ")}</span>
-                  <span className="bg-white/20 px-3 py-1 rounded-full">📅 {new Date(currentStory.createdAt).toLocaleDateString()}</span>
-                  <span className="bg-white/20 px-3 py-1 rounded-full">🌈 {currentStory.theme}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // LIBRARY SCREEN
-  if (currentStep === "library") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
-        {/* Small Header Logo */}
-        <div className="flex items-center justify-center mb-6">
-          <img
-            src={TOMMY_LOGO_URL}
-            alt="StoryLoom"
-            className="h-16 w-24 object-contain rounded-lg border-2 border-white/40 bg-white/10"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none'
-            }}
-          />
-        </div>
-
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-white">
-              📚 Story Library ({savedStories.length} adventures)
-            </h1>
-            <button
-              onClick={() => setCurrentStep("start")}
-              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-400 hover:to-green-500 transition-all"
-            >
-              ✨ Create New Story
-            </button>
-          </div>
-          
-          {savedStories.length === 0 ? (
-            <div className="text-center text-white py-20">
-              <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-12 max-w-2xl mx-auto border border-white/20">
-                <div className="text-8xl mb-6">📚</div>
-                <h2 className="text-2xl font-bold mb-4">No magical adventures yet!</h2>
-                <p className="text-xl mb-8 text-white/90">
-                  Create your first story with Tommy's world of dragons, rainbows, and magical friends.
-                </p>
-                <button
-                  onClick={() => setCurrentStep("start")}
-                  className="bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-300 hover:to-orange-300 text-purple-900 px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105"
-                >
-                  🌟 Start Creating Magic
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {savedStories.map((story) => (
-                <div
-                  key={story.id}
-                  onClick={() => {
-                    setCurrentStory(story)
-                    setCurrentStep("reading")
-                  }}
-                  className="bg-white/20 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:bg-white/30 transition-all cursor-pointer group hover:scale-105"
-                >
-                  <div className="aspect-[4/5] bg-white rounded-xl mb-4 overflow-hidden shadow-lg border-2 border-white/30">
-                    {story.coverImageUrl ? (
-                      <img
-                        src={story.coverImageUrl}
-                        alt={story.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-purple-200 to-pink-200 flex flex-col items-center justify-center text-purple-600">
-                        <div className="text-4xl mb-2">📖</div>
-                        <p className="text-sm text-center px-2 font-medium">{story.title}</p>
-                      </div>
-                    )}
-                  </div>
-                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-yellow-200 transition-colors">
-                    {story.title}
-                  </h3>
-                  <p className="text-white/80 text-sm mb-2">
-                    🎭 {story.characters.map(c => c.name).join(", ")}
-                  </p>
-                  <div className="flex justify-between text-white/70 text-xs">
-                    <span>📝 {story.wordCount} words</span>
-                    <span>📅 {new Date(story.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  {story.coverImageUrl?.includes('cloudinary.com') && (
-                    <div className="mt-2 text-center">
-                      <span className="text-xs text-green-300">☁️ Cloud Stored</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
+  // Add other screens here (reading, library, etc.)
   return null
 }
