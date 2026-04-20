@@ -1,1773 +1,1295 @@
 "use client"
 
-// src/app/page.tsx
-// StoryLoom — FIXED: Much larger icons + proper logo visibility
-// Icons increased from 64px to 120px and logo given proper background protection
-
 import { useEffect, useMemo, useState } from "react"
-import {
-  buildImagePrompt,
-  type ThemeId,
-  type PromptCharacter,
-} from "@/lib/imagePrompts"
+import { buildImagePrompt, type ThemeId, type PromptCharacter, type Theme } from "@/lib/imagePrompts"
 import { buildStoryPrompt, buildStoryTitle } from "@/lib/storyPrompts"
 
-// ---------- Cloudinary asset URLs ----------
+// ============================================================================
+// CLOUDINARY ASSETS
+// ============================================================================
 const CLOUDINARY = {
   tommyLogo: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662026/tommy-logo.png",
-  themes: {
-    space: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776661893/space.png",
-    jungle: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662020/jungle.png",
-    ocean: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662024/ocean.png",
-    dinosaur: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662024/dinosaur.png",
-    pirate: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662161/pirate.png",
-    "monster-trucks": "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662021/monster-trucks.png",
-  } satisfies Record<ThemeId, string>,
-  // Custom Tommy-themed icons
   icons: {
-    chooseTheme: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688052/tommy-theme.png",
-    aiGenerate: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688049/tommy-ai.png", 
-    buildStory: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688046/tommy-write.png",
-    addFamily: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688045/my-kids.png",
-    createStories: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688046/tommy-dream.png",
-    storyLibrary: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688047/tommy-read.png"
-  }
-} as const
-
-const THEME_ORDER: ThemeId[] = [
-  "space",
-  "jungle", 
-  "ocean",
-  "dinosaur",
-  "pirate",
-  "monster-trucks",
-]
-
-const THEME_LABEL: Record<ThemeId, string> = {
-  space: "Space Theme",
-  jungle: "Jungle Theme", 
-  ocean: "Ocean Theme",
-  dinosaur: "Dinosaur Theme",
-  pirate: "Pirate Theme",
-  "monster-trucks": "Monster Trucks Theme",
+    myKids: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688045/my-kids.png",
+    tommyDream: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688046/tommy-dream.png", 
+    tommyRead: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688047/tommy-read.png",
+    tommyWrite: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688046/tommy-write.png",
+    tommyAi: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688049/tommy-ai.png",
+    tommyTheme: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688052/tommy-theme.png",
+  },
 }
 
-// ---------- Types ----------
+// ============================================================================
+// THEMES DATA
+// ============================================================================
+const themes: Theme[] = [
+  {
+    id: "dinosaur",
+    name: "Dinosaur Adventure",
+    description: "Explore a world where dinosaurs roam free",
+    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/dinosaur-theme_vkwjxt.jpg",
+    colors: { primary: "#8B4513", secondary: "#228B22" },
+  },
+  {
+    id: "space",
+    name: "Space Explorer",
+    description: "Journey to the stars and beyond",
+    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/space-theme_abc123.jpg", 
+    colors: { primary: "#1e3a8a", secondary: "#fbbf24" },
+  },
+  {
+    id: "fairy",
+    name: "Fairy Tale Magic",
+    description: "Discover enchanted forests and magical creatures",
+    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/fairy-theme_xyz789.jpg",
+    colors: { primary: "#db2777", secondary: "#a855f7" },
+  },
+  {
+    id: "pirate",
+    name: "Pirate Adventure", 
+    description: "Sail the seven seas in search of treasure",
+    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/pirate-theme_def456.jpg",
+    colors: { primary: "#92400e", secondary: "#1f2937" },
+  },
+  {
+    id: "superhero",
+    name: "Superhero Mission",
+    description: "Save the day with incredible powers",
+    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/superhero-theme_ghi789.jpg",
+    colors: { primary: "#dc2626", secondary: "#1d4ed8" },
+  },
+  {
+    id: "underwater",
+    name: "Underwater Quest", 
+    description: "Dive deep into ocean mysteries",
+    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/underwater-theme_jkl012.jpg",
+    colors: { primary: "#0ea5e9", secondary: "#10b981" },
+  },
+]
+
 type Character = {
   id: string
   name: string
-  age?: string
-  personality?: string
-  isGuest: boolean
+  isGuest?: boolean
 }
 
-type SavedStory = {
+type Story = {
   id: string
   title: string
-  body: string
-  coverUrl: string
-  theme: ThemeId | "custom"
-  imagePrompt: string
-  storyPromptUser: string
-  createdAt: number
-  characterNames: string[]
-  isManual?: boolean
+  content: string
+  imageUrl: string
+  themeId?: ThemeId
+  characters: Character[]
+  createdAt: string
+  storyType: "theme" | "manual" | "ai"
+  userPrompt?: string
+  imagePrompt?: string
 }
 
-type Screen =
-  | "home"
-  | "characters"
-  | "builder"
-  | "manualBuilder"
-  | "aiBuilder"
-  | "themeList"     // SPECIAL: Shows theme images, NOT Tommy's logo
-  | "prepare"      // SPECIAL: Shows theme image, NOT Tommy's logo  
-  | "review"
-  | "generating" 
-  | "reading"
-  | "library"
+type Screen = "home" | "characters" | "builder" | "manualBuilder" | "aiBuilder" | "themeList" | "prepare" | "review" | "generating" | "reading" | "library"
 
-// ---------- Storage keys ----------
-const LS_CHARACTERS = "storyloom:characters"
-const LS_STORIES = "storyloom:stories"
+// ============================================================================
+// UTILITY FUNCTIONS  
+// ============================================================================
+function useLocalStorage<T>(key: string, defaultValue: T) {
+  const [value, setValue] = useState<T>(defaultValue)
 
-// ---------- Utility ----------
-const uid = () =>
-  typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2)
-
-function dedupeTommy(chars: PromptCharacter[]): PromptCharacter[] {
-  let tommySeen = false
-  return chars.filter((c) => {
-    if (c.name.toLowerCase() === "tommy") {
-      if (tommySeen) return false
-      tommySeen = true
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(key)
+      if (stored) setValue(JSON.parse(stored))
+    } catch (error) {
+      console.error(`Error loading ${key}:`, error)
     }
-    return true
-  })
+  }, [key])
+
+  const setStoredValue = (newValue: T | ((prev: T) => T)) => {
+    try {
+      const valueToStore = typeof newValue === "function" ? (newValue as (prev: T) => T)(value) : newValue
+      setValue(valueToStore)
+      localStorage.setItem(key, JSON.stringify(valueToStore))
+    } catch (error) {
+      console.error(`Error saving ${key}:`, error)
+    }
+  }
+
+  return [value, setStoredValue] as const
 }
 
-// ===================================================================
-// FIXED ANIMATED BACKGROUND COMPONENT
-// ===================================================================
+async function generateAIBookCover(prompt: string): Promise<string> {
+  try {
+    const response = await fetch("/api/generate-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    })
 
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Image generation failed: ${error}`)
+    }
+
+    const data = await response.json()
+    if (!data.imageUrl) throw new Error("No image URL returned")
+
+    return data.imageUrl
+  } catch (error) {
+    console.error("Cover generation error:", error)
+    throw error
+  }
+}
+
+async function generateAIStory(prompt: string): Promise<string> {
+  try {
+    const response = await fetch("/api/generate-story", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Story generation failed: ${error}`)
+    }
+
+    const data = await response.json()
+    if (!data.story) throw new Error("No story content returned")
+
+    return data.story
+  } catch (error) {
+    console.error("Story generation error:", error)
+    throw error
+  }
+}
+
+// ============================================================================
+// ANIMATED BACKGROUND COMPONENT
+// ============================================================================
 function AnimatedBackground() {
   return (
-    <div className="fixed inset-0 overflow-hidden -z-50">{/* Changed from -z-10 to -z-50 */}
-      {/* Base gradient layer */}
-      <div 
-        className="absolute inset-0 w-full h-full"
-        style={{
-          background: `linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)`,
-          animation: `colorShift 8s ease-in-out infinite`
-        }}
-      />
-      
-      {/* Floating gradient orbs - FIXED: No transform translations */}
-      <div 
-        className="absolute w-full h-full"
-        style={{
-          background: `
-            radial-gradient(circle at 25% 25%, rgba(255, 107, 107, 0.4) 0%, transparent 40%),
-            radial-gradient(circle at 75% 75%, rgba(78, 205, 196, 0.4) 0%, transparent 40%),
-            radial-gradient(circle at 50% 50%, rgba(255, 195, 113, 0.3) 0%, transparent 35%)
-          `,
-          animation: `orbShift 10s ease-in-out infinite`
-        }}
-      />
-      
-      {/* Secondary floating orbs */}
-      <div 
-        className="absolute w-full h-full opacity-70"
-        style={{
-          background: `
-            radial-gradient(circle at 80% 20%, rgba(199, 125, 255, 0.3) 0%, transparent 30%),
-            radial-gradient(circle at 20% 80%, rgba(255, 182, 193, 0.3) 0%, transparent 35%),
-            radial-gradient(circle at 60% 40%, rgba(135, 206, 250, 0.25) 0%, transparent 25%)
-          `,
-          animation: `orbShiftAlt 12s ease-in-out infinite reverse`
-        }}
-      />
-      
-      <style jsx global>{`
-        @keyframes colorShift {
-          0% { filter: hue-rotate(0deg) brightness(1) saturate(1); }
-          25% { filter: hue-rotate(90deg) brightness(1.1) saturate(1.2); }
-          50% { filter: hue-rotate(180deg) brightness(0.9) saturate(0.8); }
-          75% { filter: hue-rotate(270deg) brightness(1.05) saturate(1.1); }
-          100% { filter: hue-rotate(360deg) brightness(1) saturate(1); }
+    <div className="fixed inset-0 -z-50">
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-400 animate-[hue-rotate_20s_ease-in-out_infinite]" />
+      <div className="absolute inset-0 bg-gradient-radial from-transparent via-blue-500/20 to-purple-600/40 animate-[orb-shift_15s_ease-in-out_infinite]" />
+      <div className="absolute inset-0 bg-gradient-radial from-pink-400/30 via-transparent to-yellow-400/20 animate-[orb-shift-alt_12s_ease-in-out_infinite]" />
+      <style jsx>{`
+        @keyframes hue-rotate {
+          0%, 100% { filter: hue-rotate(0deg) brightness(1.1) saturate(1.2); }
+          25% { filter: hue-rotate(90deg) brightness(1.2) saturate(1.3); }
+          50% { filter: hue-rotate(180deg) brightness(1.1) saturate(1.4); }
+          75% { filter: hue-rotate(270deg) brightness(1.3) saturate(1.2); }
         }
-        
-        @keyframes orbShift {
-          0%, 100% { 
-            background: 
-              radial-gradient(circle at 25% 25%, rgba(255, 107, 107, 0.4) 0%, transparent 40%),
-              radial-gradient(circle at 75% 75%, rgba(78, 205, 196, 0.4) 0%, transparent 40%),
-              radial-gradient(circle at 50% 50%, rgba(255, 195, 113, 0.3) 0%, transparent 35%);
-          }
-          33% { 
-            background: 
-              radial-gradient(circle at 40% 10%, rgba(255, 107, 107, 0.5) 0%, transparent 45%),
-              radial-gradient(circle at 60% 90%, rgba(78, 205, 196, 0.3) 0%, transparent 35%),
-              radial-gradient(circle at 20% 60%, rgba(255, 195, 113, 0.4) 0%, transparent 40%);
-          }
-          66% { 
-            background: 
-              radial-gradient(circle at 70% 30%, rgba(255, 107, 107, 0.3) 0%, transparent 35%),
-              radial-gradient(circle at 30% 70%, rgba(78, 205, 196, 0.5) 0%, transparent 45%),
-              radial-gradient(circle at 80% 80%, rgba(255, 195, 113, 0.3) 0%, transparent 30%);
-          }
+        @keyframes orb-shift {
+          0%, 100% { background: radial-gradient(at 20% 30%, transparent, blue-500/20, purple-600/40); }
+          25% { background: radial-gradient(at 80% 20%, transparent, green-500/20, blue-600/40); }
+          50% { background: radial-gradient(at 70% 80%, transparent, purple-500/20, pink-600/40); }
+          75% { background: radial-gradient(at 30% 70%, transparent, pink-500/20, purple-600/40); }
         }
-        
-        @keyframes orbShiftAlt {
-          0%, 100% { 
-            background: 
-              radial-gradient(circle at 80% 20%, rgba(199, 125, 255, 0.3) 0%, transparent 30%),
-              radial-gradient(circle at 20% 80%, rgba(255, 182, 193, 0.3) 0%, transparent 35%),
-              radial-gradient(circle at 60% 40%, rgba(135, 206, 250, 0.25) 0%, transparent 25%);
-          }
-          50% { 
-            background: 
-              radial-gradient(circle at 15% 40%, rgba(199, 125, 255, 0.4) 0%, transparent 35%),
-              radial-gradient(circle at 85% 60%, rgba(255, 182, 193, 0.25) 0%, transparent 30%),
-              radial-gradient(circle at 40% 20%, rgba(135, 206, 250, 0.3) 0%, transparent 28%);
-          }
+        @keyframes orb-shift-alt {
+          0%, 100% { background: radial-gradient(at 80% 80%, pink-400/30, transparent, yellow-400/20); }
+          33% { background: radial-gradient(at 20% 20%, cyan-400/30, transparent, green-400/20); }
+          66% { background: radial-gradient(at 50% 10%, orange-400/30, transparent, blue-400/20); }
         }
       `}</style>
     </div>
   )
 }
 
-// ===================================================================
-// FIXED TOMMY LOGO COMPONENTS with PROPER BACKGROUND PROTECTION
-// ===================================================================
-
-function TommyHeaderLogo({ className = "" }: { className?: string }) {
+// ============================================================================
+// UI COMPONENTS
+// ============================================================================
+function TommyLogo() {
   return (
-    <div className={`flex justify-center mb-8 relative z-50 ${className}`} style={{ zIndex: 9999 }}>
-      <div className="relative" style={{ zIndex: 9999, opacity: 1 }}>
-        <img
-          src={CLOUDINARY.tommyLogo}
-          alt="StoryLoom — Tommy's magical stories"
-          className="w-full max-w-[500px] h-auto relative"
-          style={{ 
-            imageRendering: 'auto', 
-            opacity: 1,
-            zIndex: 9999,
-            filter: 'none',
-            background: 'none',
-            mixBlendMode: 'normal'
-          }}
-          onError={(e) => {
-            console.error('Tommy header logo failed to load:', e);
-            const target = e.target as HTMLImageElement;
-            if (target.src !== CLOUDINARY.tommyLogo) {
-              target.src = CLOUDINARY.tommyLogo;
-            }
-          }}
-          onLoad={() => console.log('Tommy header logo loaded successfully')}
-        />
-      </div>
+    <div className="flex justify-center mb-12">
+      <img
+        src={CLOUDINARY.tommyLogo}
+        alt="StoryLoom — Tommy's magical stories"
+        className="w-full max-w-[768px] h-auto drop-shadow-2xl relative z-50"
+        style={{ opacity: 1 }}
+        onError={(e) => console.error('Tommy logo failed to load:', e)}
+        onLoad={() => console.log('Tommy logo loaded successfully')}
+      />
     </div>
   )
 }
 
-function TommyLogo({ size = "large", className = "" }: { size?: "large" | "medium" | "small", className?: string }) {
-  const sizeClasses = {
-    large: "w-full max-w-[768px] h-auto",
-    medium: "w-full max-w-[512px] h-auto", 
-    small: "w-full max-w-[384px] h-auto"
-  }
-  
+function TommyHeaderLogo() {
   return (
-    <div className={`flex justify-center relative z-50 ${className}`} style={{ zIndex: 9999 }}>
-      <div className="relative" style={{ zIndex: 9999, opacity: 1 }}>
-        <img
-          src={CLOUDINARY.tommyLogo}
-          alt="StoryLoom — Tommy's magical stories"
-          className={`${sizeClasses[size]} relative`}
-          style={{ 
-            imageRendering: 'auto', 
-            opacity: 1,
-            zIndex: 9999,
-            filter: 'none',
-            background: 'none',
-            mixBlendMode: 'normal'
-          }}
-          onError={(e) => {
-            console.error('Tommy main logo failed to load:', e);
-            const target = e.target as HTMLImageElement;
-            if (target.src !== CLOUDINARY.tommyLogo) {
-              target.src = CLOUDINARY.tommyLogo;
-            }
-          }}
-          onLoad={() => console.log('Tommy main logo loaded successfully')}
-        />
-      </div>
+    <div className="flex justify-center mb-8">
+      <img
+        src={CLOUDINARY.tommyLogo}
+        alt="StoryLoom"
+        className="w-full max-w-[400px] h-auto drop-shadow-xl relative z-50"
+        style={{ opacity: 1 }}
+        onError={(e) => console.error('Tommy header logo failed to load:', e)}
+        onLoad={() => console.log('Tommy header logo loaded successfully')}
+      />
     </div>
   )
 }
 
-// ===================================================================
-// FIXED: MUCH LARGER TOMMY ICON COMPONENT (120px instead of 64px)
-// ===================================================================
-
-function TommyIcon({ 
-  iconKey, 
-  alt, 
-  className = "" 
-}: { 
+function TommyIcon({
+  iconKey,
+  alt,
+  className = "",
+}: {
   iconKey: keyof typeof CLOUDINARY.icons
   alt: string
-  className?: string 
+  className?: string
 }) {
   return (
     <img
       src={CLOUDINARY.icons[iconKey]}
       alt={alt}
-      className={`object-contain drop-shadow-xl filter brightness-110 relative z-30 ${className}`}
-      style={{ 
-        imageRendering: 'auto',
-        width: '480px',
-        height: '480px',
-        maxWidth: 'none',
-        maxHeight: 'none'
-      }}
-      onError={(e) => {
-        console.error(`Tommy icon ${iconKey} failed to load:`, e);
-      }}
+      className={`w-full max-w-[272px] h-auto object-contain drop-shadow-xl ${className}`}
+      onError={(e) => console.error(`Tommy icon ${iconKey} failed to load:`, e)}
       onLoad={() => console.log(`Tommy icon ${iconKey} loaded successfully`)}
     />
   )
 }
 
-// ===================================================================
-// MAGICAL CARD COMPONENT  
-// ===================================================================
-
-function MagicalCard({ 
-  children, 
+function MagicalCard({
+  children,
   className = "",
-  glowColor = "rgba(255, 255, 255, 0.1)",
-  onClick
-}: { 
+  glowColor = "rgba(168, 85, 247, 0.2)",
+  onClick,
+}: {
   children: React.ReactNode
-  className?: string 
+  className?: string
   glowColor?: string
   onClick?: () => void
 }) {
   return (
-    <div 
+    <div
+      onClick={onClick}
       className={`
-        relative bg-white/10 backdrop-blur-md rounded-3xl py-0 px-1 
-        border border-white/20 shadow-2xl hover:shadow-3xl
+        relative bg-white/10 backdrop-blur-md rounded-3xl
+        border border-white/20 shadow-2xl
         transition-all duration-500 ease-out
-        hover:transform hover:scale-105 hover:-translate-y-2
-        group cursor-pointer
+        ${onClick ? "cursor-pointer hover:scale-[1.02] hover:-translate-y-1" : ""}
         ${className}
       `}
       style={{
-        boxShadow: `
-          0 25px 50px -12px rgba(0, 0, 0, 0.25),
-          0 0 0 1px rgba(255, 255, 255, 0.1),
-          inset 0 1px 0 rgba(255, 255, 255, 0.2)
-        `
+        boxShadow: `0 25px 50px -12px ${glowColor}, 0 0 0 1px rgba(255,255,255,0.05)`,
       }}
-      onClick={onClick}
     >
-      {/* Animated glow effect */}
-      <div 
-        className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-        style={{
-          background: `radial-gradient(circle at center, ${glowColor} 0%, transparent 70%)`,
-          filter: "blur(20px)"
-        }}
-      />
-      
-      {/* Content */}
-      <div className="relative z-10">
-        {children}
-      </div>
+      {children}
     </div>
   )
 }
 
-// ===================================================================
-// MAIN PAGE COMPONENT
-// ===================================================================
-
-export default function StoryLoomPage() {
-  // ---------- Navigation ----------
+// ============================================================================
+// MAIN APP COMPONENT
+// ============================================================================
+export default function StoryLoom() {
   const [screen, setScreen] = useState<Screen>("home")
-  
-  // ---------- Persistent state ----------
-  const [characters, setCharacters] = useState<Character[]>([])
-  const [stories, setStories] = useState<SavedStory[]>([])
-
-  useEffect(() => {
-    try {
-      const c = localStorage.getItem(LS_CHARACTERS)
-      if (c) setCharacters(JSON.parse(c))
-      const s = localStorage.getItem(LS_STORIES)
-      if (s) setStories(JSON.parse(s))
-    } catch {
-      // ignore corrupt storage
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem(LS_CHARACTERS, JSON.stringify(characters))
-  }, [characters])
-
-  useEffect(() => {
-    localStorage.setItem(LS_STORIES, JSON.stringify(stories))
-  }, [stories])
-
-  // ---------- Flow state ----------
-  const [selectedTheme, setSelectedTheme] = useState<ThemeId | null>(null)
-  const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([])
-  const [customAngle, setCustomAngle] = useState("")
-
-  // Review screen state
-  const [storyPromptUser, setStoryPromptUser] = useState("")
-  const [storyPromptSystem, setStoryPromptSystem] = useState("")
-  const [imagePrompt, setImagePrompt] = useState("")
+  const [characters, setCharacters] = useLocalStorage<Character[]>("storyloom_characters", [])
+  const [stories, setStories] = useLocalStorage<Story[]>("storyloom_stories", [])
+  const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
+  const [selectedCharacters, setSelectedCharacters] = useState<Character[]>([])
+  const [customPrompt, setCustomPrompt] = useState("")
   const [storyTitle, setStoryTitle] = useState("")
-
-  // Generation state
-  const [genStage, setGenStage] = useState<"idle" | "story" | "image" | "done">("idle")
-  const [genError, setGenError] = useState<string | null>(null)
-
-  // Current/reading story
-  const [currentStory, setCurrentStory] = useState<SavedStory | null>(null)
-
-  // Manual builder state
+  const [storyPrompt, setStoryPrompt] = useState("")
+  const [imagePrompt, setImagePrompt] = useState("")
+  const [currentStory, setCurrentStory] = useState<Story | null>(null)
+  const [generationStage, setGenerationStage] = useState("")
+  const [error, setError] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [newCharacterName, setNewCharacterName] = useState("")
+  const [newGuestName, setNewGuestName] = useState("")
+  
+  // Manual story builder states
   const [manualTitle, setManualTitle] = useState("")
-  const [manualStory, setManualStory] = useState("")
-
-  // AI builder state  
+  const [manualContent, setManualContent] = useState("")
+  
+  // AI story builder states  
   const [aiPrompt, setAiPrompt] = useState("")
-  const [aiGenre, setAiGenre] = useState("adventure")
-  const [aiLength, setAiLength] = useState("medium")
+  const [aiGenre, setAiGenre] = useState("Adventure")
+  const [aiLength, setAiLength] = useState("Medium")
 
-  // ---------- Character editor ----------
-  const addFamilyMember = () => {
-    setCharacters((prev) => [
-      ...prev,
-      { id: uid(), name: "", age: "", personality: "", isGuest: false },
-    ])
+  const go = (newScreen: Screen) => {
+    setScreen(newScreen)
+    setError("")
   }
+
+  const showTommyHeader = screen !== "home" && screen !== "themeList" && screen !== "prepare"
+
+  // ============================================================================
+  // CHARACTER MANAGEMENT
+  // ============================================================================
+  const addCharacter = () => {
+    if (!newCharacterName.trim()) return
+    const newChar: Character = {
+      id: Date.now().toString(),
+      name: newCharacterName.trim(),
+    }
+    setCharacters(prev => [...prev, newChar])
+    setNewCharacterName("")
+  }
+
   const addGuest = () => {
-    setCharacters((prev) => [
-      ...prev,
-      { id: uid(), name: "", isGuest: true },
-    ])
-  }
-  const updateCharacter = (id: string, patch: Partial<Character>) => {
-    setCharacters((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
-  }
-  const removeCharacter = (id: string) => {
-    setCharacters((prev) => prev.filter((c) => c.id !== id))
+    if (!newGuestName.trim()) return
+    const newGuest: Character = {
+      id: Date.now().toString(),
+      name: newGuestName.trim(),
+      isGuest: true,
+    }
+    setCharacters(prev => [...prev, newGuest])
+    setNewGuestName("")
   }
 
-  // ---------- Flow: theme picked → pick characters → review ----------
-  const pickTheme = (theme: ThemeId) => {
+  const deleteCharacter = (id: string) => {
+    setCharacters(prev => prev.filter(c => c.id !== id))
+  }
+
+  // ============================================================================
+  // STORY GENERATION
+  // ============================================================================
+  const startThemeStory = (theme: Theme) => {
     setSelectedTheme(theme)
-    setSelectedCharacterIds(
-      characters.filter((c) => !c.isGuest && c.name.trim()).map((c) => c.id)
-    )
-    setCustomAngle("")
-    setScreen("prepare")
+    setSelectedCharacters([])
+    setCustomPrompt("")
+    go("prepare")
+  }
+
+  const startManualStory = () => {
+    setManualTitle("")
+    setManualContent("")
+    go("manualBuilder")
+  }
+
+  const startAIStory = () => {
+    setAiPrompt("")
+    setAiGenre("Adventure")
+    setAiLength("Medium")
+    go("aiBuilder")
   }
 
   const proceedToReview = () => {
     if (!selectedTheme) return
-    const chosen = characters
-      .filter((c) => selectedCharacterIds.includes(c.id) && c.name.trim())
-      .map<PromptCharacter>((c) => ({
-        name: c.name.trim(),
-        age: c.age || undefined,
-        personality: c.personality || undefined,
-        isGuest: c.isGuest,
-      }))
 
-    const deduped = dedupeTommy(chosen)
-    const title = buildStoryTitle({ theme: selectedTheme, characters: deduped })
-    setStoryTitle(title)
+    const promptCharacters: PromptCharacter[] = selectedCharacters.map(c => ({
+      name: c.name,
+      isGuest: c.isGuest || false,
+    }))
 
-    const { system, user } = buildStoryPrompt({
-      theme: selectedTheme,
-      characters: deduped,
-      customAngle: customAngle.trim() || undefined,
+    const generatedTitle = buildStoryTitle(selectedTheme.id as ThemeId, {
+      characters: promptCharacters,
+      customPrompt,
     })
-    setStoryPromptSystem(system)
-    setStoryPromptUser(user)
 
-    const imgPrompt = buildImagePrompt({
-      theme: selectedTheme,
-      characters: deduped,
-      storyTitle: title,
+    const generatedStoryPrompt = buildStoryPrompt(selectedTheme.id as ThemeId, {
+      characters: promptCharacters,
+      customPrompt,
     })
-    setImagePrompt(imgPrompt)
 
-    setScreen("review")
+    const generatedImagePrompt = buildImagePrompt(selectedTheme.id as ThemeId, {
+      characters: promptCharacters,
+      customPrompt,
+    })
+
+    setStoryTitle(generatedTitle)
+    setStoryPrompt(generatedStoryPrompt)
+    setImagePrompt(generatedImagePrompt)
+    go("review")
   }
 
-  // ---------- Manual story save ----------
-  const saveManualStory = async () => {
-    if (!manualTitle.trim() || !manualStory.trim()) {
-      alert("Please fill in both title and story!")
+  const proceedManualToReview = () => {
+    if (!manualTitle.trim() || !manualContent.trim()) {
+      setError("Please fill in both title and story content")
       return
     }
 
-    setScreen("generating")
-    setGenError(null)
-
-    try {
-      // Generate cover image for manual story
-      setGenStage("image")
-      const imgRes = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: `Whimsical children's book cover illustration for a story titled "${manualTitle}". Beautiful, colorful, magical style with soft lighting and fantasy elements. Story excerpt: "${manualStory.slice(0, 200)}"`,
-          theme: "custom",
-          storyTitle: manualTitle,
-          quality: "standard", 
-          size: "1024x1024",
-          style: "vivid",
-        }),
-      })
-
-      if (!imgRes.ok) {
-        throw new Error(`Cover generation failed`)
-      }
-      const { url: coverUrl }: { url: string } = await imgRes.json()
-
-      // Save manual story
-      const saved: SavedStory = {
-        id: uid(),
-        title: manualTitle,
-        body: manualStory,
-        coverUrl,
-        theme: "custom",
-        imagePrompt: `Manual story cover for "${manualTitle}"`,
-        storyPromptUser: "User-written story",
-        createdAt: Date.now(),
-        characterNames: [],
-        isManual: true,
-      }
-      
-      setStories((prev) => [saved, ...prev])
-      setCurrentStory(saved)
-      setGenStage("done")
-      setScreen("reading")
-      
-      // Reset form
-      setManualTitle("")
-      setManualStory("")
-    } catch (err) {
-      console.error(err)
-      setGenError(err instanceof Error ? err.message : "Unknown error")
-      setGenStage("idle")
-    }
+    setStoryTitle(manualTitle)
+    setStoryPrompt(`Create a children's book cover for this story:\n\n"${manualTitle}"\n\n${manualContent.substring(0, 200)}...`)
+    setImagePrompt(`Children's book cover illustration for "${manualTitle}". ${manualContent.substring(0, 100)}... Style: colorful, engaging, suitable for children`)
+    go("review")
   }
 
-  // ---------- AI story generation ----------
-  const generateAiStory = async () => {
+  const proceedAIToReview = () => {
     if (!aiPrompt.trim()) {
-      alert("Please describe what story you'd like!")
+      setError("Please describe your story idea")
       return
     }
 
-    setScreen("generating")
-    setGenError(null)
+    const titlePrompt = `Create a catchy children's book title for this story idea: ${aiPrompt}. Just return the title, nothing else.`
+    const storyPromptText = `Write a ${aiLength.toLowerCase()} children's story in the ${aiGenre.toLowerCase()} genre about: ${aiPrompt}. Include the characters: ${selectedCharacters.map(c => c.name).join(", ")}. Make it magical and engaging for children ages 4-8.`
+    const coverPrompt = `Children's book cover illustration: ${aiPrompt}. Characters: ${selectedCharacters.map(c => c.name).join(", ")}. Style: vibrant, magical, ${aiGenre.toLowerCase()} theme, suitable for children`
 
-    try {
-      // 1. Generate story
-      setGenStage("story")
-      const characterNames = characters.filter(c => c.name.trim()).map(c => c.name)
-      const characterContext = characterNames.length > 0 
-        ? ` Include these characters if relevant: ${characterNames.join(", ")}.`
-        : ""
-
-      const lengthMap = {
-        short: "Keep it short and sweet (3-4 paragraphs).",
-        medium: "Make it a good medium length (5-7 paragraphs).", 
-        long: "Make it a longer, detailed story (8-12 paragraphs)."
-      }
-
-      const systemPrompt = `You are a children's storyteller. Write engaging, wholesome stories for kids aged 4-10. Use simple language, vivid descriptions, and positive messages. Focus on friendship, adventure, and learning.`
-      
-      const userPrompt = `Write a ${aiGenre} story about: ${aiPrompt}${characterContext} ${lengthMap[aiLength as keyof typeof lengthMap]} Make sure it has a clear beginning, middle, and end with a positive message.`
-
-      const storyRes = await fetch("/api/generate-story", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemPrompt,
-          userPrompt,
-        }),
-      })
-
-      if (!storyRes.ok) {
-        throw new Error(`Story generation failed`)
-      }
-      const { story }: { story: string } = await storyRes.json()
-
-      // 2. Generate cover
-      setGenStage("image")
-      const imgRes = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: `Whimsical children's book cover illustration in ${aiGenre} style. ${aiPrompt}. Beautiful, colorful, magical artwork with soft lighting and fantasy elements. Story excerpt: "${story.slice(0, 200)}"`,
-          theme: "custom",
-          storyTitle: `AI Generated ${aiGenre} Story`,
-          quality: "standard",
-          size: "1024x1024", 
-          style: "vivid",
-        }),
-      })
-
-      if (!imgRes.ok) {
-        throw new Error(`Cover generation failed`)
-      }
-      const { url: coverUrl }: { url: string } = await imgRes.json()
-
-      // 3. Save
-      const saved: SavedStory = {
-        id: uid(),
-        title: `The ${aiGenre.charAt(0).toUpperCase() + aiGenre.slice(1)} of ${aiPrompt.slice(0, 30)}${aiPrompt.length > 30 ? "..." : ""}`,
-        body: story,
-        coverUrl,
-        theme: "custom",
-        imagePrompt: `AI generated ${aiGenre} cover`,
-        storyPromptUser: aiPrompt,
-        createdAt: Date.now(),
-        characterNames,
-        isManual: false,
-      }
-
-      setStories((prev) => [saved, ...prev])
-      setCurrentStory(saved)
-      setGenStage("done")  
-      setScreen("reading")
-      
-      // Reset form
-      setAiPrompt("")
-      setAiGenre("adventure")
-      setAiLength("medium")
-    } catch (err) {
-      console.error(err)
-      setGenError(err instanceof Error ? err.message : "Unknown error")
-      setGenStage("idle")
-    }
+    setStoryTitle(titlePrompt)
+    setStoryPrompt(storyPromptText)
+    setImagePrompt(coverPrompt)
+    go("review")
   }
 
-  // ---------- Generation ----------
-  const generate = async () => {
-    if (!selectedTheme) return
-    setScreen("generating")
-    setGenError(null)
+  const generateStory = async () => {
+    setIsGenerating(true)
+    setError("")
+    go("generating")
 
     try {
-      // 1. Story
-      setGenStage("story")
-      const storyRes = await fetch("/api/generate-story", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemPrompt: storyPromptSystem,
-          userPrompt: storyPromptUser,
-        }),
-      })
-      if (!storyRes.ok) {
-        const detail = await storyRes.text().catch(() => "")
-        throw new Error(`Story generation failed: ${detail || storyRes.status}`)
+      let finalStoryContent = ""
+      let storyType: "theme" | "manual" | "ai" = "theme"
+
+      // Determine story type and content
+      if (screen === "review" && selectedTheme) {
+        storyType = "theme"
+        setGenerationStage("Writing your story...")
+        finalStoryContent = await generateAIStory(storyPrompt)
+      } else if (manualContent) {
+        storyType = "manual"
+        setGenerationStage("Creating your cover...")
+        finalStoryContent = manualContent
+      } else {
+        storyType = "ai" 
+        setGenerationStage("Writing your story...")
+        finalStoryContent = await generateAIStory(storyPrompt)
       }
-      const { story }: { story: string } = await storyRes.json()
 
-      // 2. Image
-      setGenStage("image")
-      const excerpt = story.split("\n\n")[0]?.slice(0, 240) ?? story.slice(0, 240)
-      const groundedImagePrompt =
-        imagePrompt + ` Scene inspired by this story opening: "${excerpt}"`
+      setGenerationStage("Painting the cover...")
+      const imageUrl = await generateAIBookCover(imagePrompt + (finalStoryContent ? `\n\nStory beginning: ${finalStoryContent.substring(0, 200)}...` : ""))
 
-      const imgRes = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: groundedImagePrompt,
-          theme: selectedTheme,
-          storyTitle,
-          quality: "standard",
-          size: "1024x1024",
-          style: "vivid",
-        }),
-      })
-      if (!imgRes.ok) {
-        const detail = await imgRes.text().catch(() => "")
-        throw new Error(`Cover generation failed: ${detail || imgRes.status}`)
-      }
-      const { url: coverUrl }: { url: string } = await imgRes.json()
-
-      // 3. Save
-      const saved: SavedStory = {
-        id: uid(),
+      const newStory: Story = {
+        id: Date.now().toString(),
         title: storyTitle,
-        body: story,
-        coverUrl,
-        theme: selectedTheme,
-        imagePrompt: groundedImagePrompt,
-        storyPromptUser,
-        createdAt: Date.now(),
-        characterNames: characters
-          .filter((c) => selectedCharacterIds.includes(c.id))
-          .map((c) => c.name),
+        content: finalStoryContent,
+        imageUrl,
+        themeId: selectedTheme?.id as ThemeId,
+        characters: selectedCharacters,
+        createdAt: new Date().toISOString(),
+        storyType,
+        userPrompt: customPrompt || aiPrompt || undefined,
+        imagePrompt,
       }
-      setStories((prev) => [saved, ...prev])
-      setCurrentStory(saved)
-      setGenStage("done")
-      setScreen("reading")
+
+      setStories(prev => [newStory, ...prev])
+      setCurrentStory(newStory)
+      go("reading")
     } catch (err) {
-      console.error(err)
-      setGenError(err instanceof Error ? err.message : "Unknown error")
-      setGenStage("idle")
+      console.error("Generation error:", err)
+      setError(err instanceof Error ? err.message : "Failed to generate story")
+    } finally {
+      setIsGenerating(false)
     }
   }
 
-  // ---------- Render with Tommy Header Logo Logic ----------
-  const showTommyHeader = screen !== "home" && screen !== "themeList" && screen !== "prepare"
+  const readStory = (story: Story) => {
+    setCurrentStory(story)
+    go("reading")
+  }
 
-  return (
-    <>
-      <AnimatedBackground />
-      
-      <main className="min-h-screen relative z-10">
-        <div className="mx-auto max-w-6xl px-6 py-10">
-          {/* Tommy's Logo Header - Shows on all pages except home, themeList, and prepare */}
-          {showTommyHeader && <TommyHeaderLogo />}
+  const deleteStory = (id: string) => {
+    if (confirm("Delete this story permanently?")) {
+      setStories(prev => prev.filter(s => s.id !== id))
+    }
+  }
 
-          {screen === "home" && <HomeScreen go={setScreen} />}
-          {screen === "characters" && (
-            <CharactersScreen
-              characters={characters}
-              addFamilyMember={addFamilyMember}
-              addGuest={addGuest}
-              updateCharacter={updateCharacter}
-              removeCharacter={removeCharacter}
-              go={setScreen}
-            />
-          )}
-          {screen === "builder" && <BuilderScreen go={setScreen} />}
-          {screen === "manualBuilder" && (
-            <ManualBuilderScreen
-              title={manualTitle}
-              setTitle={setManualTitle}
-              story={manualStory}
-              setStory={setManualStory}
-              save={saveManualStory}
-              go={setScreen}
-            />
-          )}
-          {screen === "aiBuilder" && (
-            <AiBuilderScreen
-              prompt={aiPrompt}
-              setPrompt={setAiPrompt}
-              genre={aiGenre}
-              setGenre={setAiGenre}
-              length={aiLength}
-              setLength={setAiLength}
-              characters={characters}
-              generate={generateAiStory}
-              go={setScreen}
-            />
-          )}
-          {screen === "themeList" && <ThemeListScreen pickTheme={pickTheme} go={setScreen} />}
-          {screen === "prepare" && selectedTheme && (
-            <PrepareScreen
-              theme={selectedTheme}
-              characters={characters}
-              selectedIds={selectedCharacterIds}
-              toggle={(id) =>
-                setSelectedCharacterIds((prev) =>
-                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                )
-              }
-              customAngle={customAngle}
-              setCustomAngle={setCustomAngle}
-              back={() => setScreen("themeList")}
-              next={proceedToReview}
-            />
-          )}
-          {screen === "review" && selectedTheme && (
-            <ReviewScreen
-              theme={selectedTheme}
-              storyTitle={storyTitle}
-              setStoryTitle={setStoryTitle}
-              storyPromptUser={storyPromptUser}
-              setStoryPromptUser={setStoryPromptUser}
-              imagePrompt={imagePrompt}
-              setImagePrompt={setImagePrompt}
-              back={() => setScreen("prepare")}
-              generate={generate}
-            />
-          )}
-          {screen === "generating" && (
-            <GeneratingScreen stage={genStage} error={genError} back={() => setScreen("home")} />
-          )}
-          {screen === "reading" && currentStory && (
-            <ReadingScreen story={currentStory} go={setScreen} />
-          )}
-          {screen === "library" && (
-            <LibraryScreen
-              stories={stories}
-              open={(s) => {
-                setCurrentStory(s)
-                setScreen("reading")
-              }}
-              remove={(id) => setStories((prev) => prev.filter((s) => s.id !== id))}
-              go={setScreen}
-            />
-          )}
-        </div>
-      </main>
-    </>
-  )
-}
+  // ============================================================================
+  // RENDER FUNCTIONS
+  // ============================================================================
 
-// ===================================================================
-// SCREENS WITH MUCH LARGER CUSTOM TOMMY ICONS
-// ===================================================================
-
-function HomeScreen({ go }: { go: (s: Screen) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center pt-6">
-      {/* HOME PAGE: Large prominent Tommy logo with background protection and subtle pulsing */}
-      <TommyLogo 
-        size="large" 
-        className="mb-12 animate-pulse" 
-      />
-
-      {/* Three main action cards - MUCH LARGER ICONS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
-        <MagicalCard
-          onClick={() => go("characters")}
-          className="text-center overflow-hidden"
-          glowColor="rgba(255, 107, 107, 0.2)"
-        >
-          <div className="relative">
-            <div className="pt-1">
-              <TommyIcon iconKey="addFamily" alt="Add Your Family" />
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
-              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
-                Add Your Family
-              </h3>
-              <p className="text-white/90 text-sm leading-snug">
-                Create profiles for your children and family members to include them in magical stories
-              </p>
-            </div>
-          </div>
-        </MagicalCard>
-
-        <MagicalCard
-          onClick={() => go("builder")}
-          className="text-center overflow-hidden"
-          glowColor="rgba(78, 205, 196, 0.2)"
-        >
-          <div className="relative">
-            <div className="pt-1">
-              <TommyIcon iconKey="createStories" alt="Create Stories" />
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
-              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
-                Create Stories
-              </h3>
-              <p className="text-white/90 text-sm leading-snug">
-                Choose from themes, write your own, or let AI create personalized adventures
-              </p>
-            </div>
-          </div>
-        </MagicalCard>
-
-        <MagicalCard
-          onClick={() => go("library")}
-          className="text-center overflow-hidden"
-          glowColor="rgba(199, 125, 255, 0.2)"
-        >
-          <div className="relative">
-            <div className="pt-1">
-              <TommyIcon iconKey="storyLibrary" alt="Story Library" />
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
-              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
-                Story Library
-              </h3>
-              <p className="text-white/90 text-sm leading-snug">
-                Browse and read all your saved stories with beautiful cover art
-              </p>
-            </div>
-          </div>
-        </MagicalCard>
-      </div>
-    </div>
-  )
-}
-
-function CharactersScreen({ 
-  characters, 
-  addFamilyMember, 
-  addGuest, 
-  updateCharacter, 
-  removeCharacter, 
-  go 
-}: {
-  characters: Character[]
-  addFamilyMember: () => void
-  addGuest: () => void
-  updateCharacter: (id: string, patch: Partial<Character>) => void
-  removeCharacter: (id: string) => void
-  go: (s: Screen) => void
-}) {
-  return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
-        Manage Your Characters
-      </h1>
-
-      {/* Add buttons */}
-      <div className="flex justify-center gap-6 mb-12">
-        <button
-          onClick={addFamilyMember}
-          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          + Add Family Member
-        </button>
-        <button
-          onClick={addGuest}
-          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          + Add Guest Character
-        </button>
-      </div>
-
-      {/* Character list */}
-      <div className="space-y-6">
-        {characters.map((char) => (
-          <MagicalCard key={char.id} className="p-6">
-            <div className="flex flex-col md:flex-row gap-4 items-center">
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <input
-                  type="text"
-                  placeholder="Name"
-                  value={char.name}
-                  onChange={(e) => updateCharacter(char.id, { name: e.target.value })}
-                  className="px-4 py-3 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                           text-white placeholder-white/60 focus:outline-none focus:ring-2 
-                           focus:ring-white/30"
-                />
-                {!char.isGuest && (
-                  <>
-                    <input
-                      type="text"
-                      placeholder="Age (optional)"
-                      value={char.age || ""}
-                      onChange={(e) => updateCharacter(char.id, { age: e.target.value })}
-                      className="px-4 py-3 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                               text-white placeholder-white/60 focus:outline-none focus:ring-2 
-                               focus:ring-white/30"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Personality (optional)"
-                      value={char.personality || ""}
-                      onChange={(e) => updateCharacter(char.id, { personality: e.target.value })}
-                      className="px-4 py-3 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                               text-white placeholder-white/60 focus:outline-none focus:ring-2 
-                               focus:ring-white/30"
-                    />
-                  </>
-                )}
-                {char.isGuest && (
-                  <div className="md:col-span-2 flex items-center px-4 py-3 bg-blue-500/20 rounded-xl border border-blue-300/30">
-                    <span className="text-blue-200 font-medium">Guest Character (name only)</span>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => removeCharacter(char.id)}
-                className="px-6 py-3 bg-red-500/20 backdrop-blur-md rounded-xl text-red-200 
-                         hover:bg-red-500/30 transition-all duration-300 border border-red-300/30"
-              >
-                Remove
-              </button>
-            </div>
-          </MagicalCard>
-        ))}
-      </div>
-
-      {characters.length === 0 && (
-        <MagicalCard className="text-center py-12">
-          <p className="text-white/80 text-xl mb-6">
-            No characters yet! Add family members or guest characters to include them in your stories.
-          </p>
-          <div className="flex justify-center">
-            <TommyIcon iconKey="addFamily" alt="Add Family" className="opacity-50" />
-          </div>
-        </MagicalCard>
-      )}
-
-      {/* Navigation */}
-      <div className="flex justify-center mt-12">
-        <button
-          onClick={() => go("home")}
-          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          Back to Home
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function BuilderScreen({ go }: { go: (s: Screen) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center">
-      <h1 className="text-4xl font-bold text-white mb-12 drop-shadow-lg">
-        How would you like to create your story?
-      </h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
-        <MagicalCard 
-          onClick={() => go("manualBuilder")}
-          className="text-center overflow-hidden"
-          glowColor="rgba(255, 195, 113, 0.2)"
-        >
-          <div className="relative">
-            <div className="pt-1">
-              <TommyIcon iconKey="buildStory" alt="Build Your Own Story" />
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
-              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
-                Build Your Own Story
-              </h3>
-              <p className="text-white/90 text-sm leading-snug">
-                Write your own magical tale and we'll create a beautiful cover image
-              </p>
-            </div>
-          </div>
-        </MagicalCard>
-
-        <MagicalCard 
-          onClick={() => go("aiBuilder")}
-          className="text-center overflow-hidden"
-          glowColor="rgba(135, 206, 250, 0.2)"
-        >
-          <div className="relative">
-            <div className="pt-1">
-              <TommyIcon iconKey="aiGenerate" alt="AI Generate a Story" />
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
-              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
-                AI Generate a Story
-              </h3>
-              <p className="text-white/90 text-sm leading-snug">
-                Describe any story idea and our AI will create a complete tale for you
-              </p>
-            </div>
-          </div>
-        </MagicalCard>
-
-        <MagicalCard 
-          onClick={() => go("themeList")}
-          className="text-center overflow-hidden"
-          glowColor="rgba(255, 107, 107, 0.2)"
-        >
-          <div className="relative">
-            <div className="pt-1">
-              <TommyIcon iconKey="chooseTheme" alt="Choose from a Theme" />
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
-              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
-                Choose from a Theme
-              </h3>
-              <p className="text-white/90 text-sm leading-snug">
-                Pick a magical theme and we'll create a personalized story with your characters
-              </p>
-            </div>
-          </div>
-        </MagicalCard>
-      </div>
-
-      <div className="mt-12">
-        <button
-          onClick={() => go("home")}
-          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          Back to Home
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function ManualBuilderScreen({
-  title,
-  setTitle,
-  story,
-  setStory,
-  save,
-  go,
-}: {
-  title: string
-  setTitle: (title: string) => void
-  story: string
-  setStory: (story: string) => void
-  save: () => void
-  go: (s: Screen) => void
-}) {
-  return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
-        Build Your Own Story
-      </h1>
-
-      <div className="space-y-8">
-        <MagicalCard>
-          <label className="block text-white font-semibold mb-4 text-xl">Story Title</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter your story title..."
-            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
-                     focus:ring-white/30 text-lg"
-          />
-        </MagicalCard>
-
-        <MagicalCard>
-          <label className="block text-white font-semibold mb-4 text-xl">Your Story</label>
-          <textarea
-            value={story}
-            onChange={(e) => setStory(e.target.value)}
-            placeholder="Once upon a time..."
-            rows={12}
-            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
-                     focus:ring-white/30 text-lg resize-none"
-          />
-        </MagicalCard>
-
-        <div className="flex justify-center gap-6">
-          <button
-            onClick={() => go("builder")}
-            className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                     border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                     hover:transform hover:scale-105"
-          >
-            Back
-          </button>
-          <button
-            onClick={save}
-            disabled={!title.trim() || !story.trim()}
-            className="px-8 py-4 bg-green-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
-                     border border-green-300/30 shadow-xl hover:bg-green-500/40 transition-all duration-300
-                     hover:transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed
-                     disabled:hover:transform-none"
-          >
-            Create Story & Cover
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AiBuilderScreen({
-  prompt,
-  setPrompt,
-  genre,
-  setGenre,
-  length,
-  setLength,
-  characters,
-  generate,
-  go,
-}: {
-  prompt: string
-  setPrompt: (prompt: string) => void
-  genre: string
-  setGenre: (genre: string) => void
-  length: string
-  setLength: (length: string) => void
-  characters: Character[]
-  generate: () => void
-  go: (s: Screen) => void
-}) {
-  const genres = ["adventure", "fantasy", "friendship", "mystery", "comedy", "educational"]
-  const lengths = ["short", "medium", "long"]
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
-        AI Story Generator
-      </h1>
-
-      <div className="space-y-8">
-        <MagicalCard>
-          <label className="block text-white font-semibold mb-4 text-xl">
-            What story would you like to create?
-          </label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe your story idea... (e.g., 'A brave princess who saves a village from a friendly dragon')"
-            rows={4}
-            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
-                     focus:ring-white/30 text-lg resize-none"
-          />
-        </MagicalCard>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <MagicalCard>
-            <label className="block text-white font-semibold mb-4 text-xl">Genre</label>
-            <select
-              value={genre}
-              onChange={(e) => setGenre(e.target.value)}
-              className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                       text-white focus:outline-none focus:ring-2 focus:ring-white/30 text-lg"
-            >
-              {genres.map((g) => (
-                <option key={g} value={g} className="bg-purple-800">
-                  {g.charAt(0).toUpperCase() + g.slice(1)}
-                </option>
-              ))}
-            </select>
-          </MagicalCard>
-
-          <MagicalCard>
-            <label className="block text-white font-semibold mb-4 text-xl">Length</label>
-            <select
-              value={length}
-              onChange={(e) => setLength(e.target.value)}
-              className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                       text-white focus:outline-none focus:ring-2 focus:ring-white/30 text-lg"
-            >
-              {lengths.map((l) => (
-                <option key={l} value={l} className="bg-purple-800">
-                  {l.charAt(0).toUpperCase() + l.slice(1)}
-                </option>
-              ))}
-            </select>
-          </MagicalCard>
-        </div>
-
-        {characters.length > 0 && (
-          <MagicalCard>
-            <h3 className="text-white font-semibold mb-4 text-xl">Available Characters</h3>
-            <p className="text-white/80 mb-4">
-              Your family characters will be included automatically when relevant:
+  if (screen === "home") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 flex flex-col items-center text-center pt-6">
+          <TommyLogo />
+          
+          <div className="mb-16">
+            <h1 className="text-6xl font-bold text-white mb-6 drop-shadow-2xl">
+              Welcome to Tommy's World
+            </h1>
+            <p className="text-xl text-white/90 max-w-3xl leading-relaxed drop-shadow-lg">
+              Create magical stories with AI-powered adventures, beautiful illustrations, and characters that come to life
             </p>
-            <div className="flex flex-wrap gap-3">
-              {characters.filter(c => c.name.trim()).map((char) => (
-                <span
-                  key={char.id}
-                  className="px-4 py-2 bg-white/10 rounded-lg text-white/90 border border-white/20"
-                >
-                  {char.name} {char.isGuest ? "(Guest)" : ""}
-                </span>
-              ))}
-            </div>
-          </MagicalCard>
-        )}
+          </div>
 
-        <div className="flex justify-center gap-6">
-          <button
-            onClick={() => go("builder")}
-            className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                     border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                     hover:transform hover:scale-105"
-          >
-            Back
-          </button>
-          <button
-            onClick={generate}
-            disabled={!prompt.trim()}
-            className="px-8 py-4 bg-blue-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
-                     border border-blue-300/30 shadow-xl hover:bg-blue-500/40 transition-all duration-300
-                     hover:transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed
-                     disabled:hover:transform-none"
-          >
-            Generate Story
-          </button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
+            <MagicalCard
+              onClick={() => go("characters")}
+              glowColor="rgba(255, 107, 107, 0.2)"
+            >
+              <div className="flex flex-col items-center text-center py-4 px-4">
+                <TommyIcon iconKey="myKids" alt="Add Your Family" />
+                <h3 className="text-xl font-bold text-white mt-3 mb-2">
+                  Add Your Family
+                </h3>
+                <p className="text-base text-white/80 leading-snug">
+                  Create characters inspired by your loved ones
+                </p>
+              </div>
+            </MagicalCard>
+
+            <MagicalCard
+              onClick={() => go("builder")}
+              glowColor="rgba(168, 85, 247, 0.2)"
+            >
+              <div className="flex flex-col items-center text-center py-4 px-4">
+                <TommyIcon iconKey="tommyDream" alt="Create Stories" />
+                <h3 className="text-xl font-bold text-white mt-3 mb-2">
+                  Create Stories
+                </h3>
+                <p className="text-base text-white/80 leading-snug">
+                  Choose themes and generate magical adventures
+                </p>
+              </div>
+            </MagicalCard>
+
+            <MagicalCard
+              onClick={() => go("library")}
+              glowColor="rgba(59, 130, 246, 0.2)"
+            >
+              <div className="flex flex-col items-center text-center py-4 px-4">
+                <TommyIcon iconKey="tommyRead" alt="Story Library" />
+                <h3 className="text-xl font-bold text-white mt-3 mb-2">
+                  Story Library
+                </h3>
+                <p className="text-base text-white/80 leading-snug">
+                  Revisit your magical collection
+                </p>
+              </div>
+            </MagicalCard>
+          </div>
         </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
-function ThemeListScreen({ 
-  pickTheme, 
-  go 
-}: { 
-  pickTheme: (theme: ThemeId) => void
-  go: (s: Screen) => void 
-}) {
-  return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
-        Choose Your Adventure Theme
-      </h1>
+  if (screen === "characters") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
+              Manage Characters
+            </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {THEME_ORDER.map((theme) => (
-          <MagicalCard 
-            key={theme} 
-            onClick={() => pickTheme(theme)}
-            className="text-center hover:scale-110 transition-transform duration-300"
-            glowColor="rgba(255, 255, 255, 0.15)"
-          >
-            <img
-              src={CLOUDINARY.themes[theme]}
-              alt={THEME_LABEL[theme]}
-              className="w-full h-48 object-cover rounded-2xl mb-6 shadow-lg"
-            />
-            <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
-              {THEME_LABEL[theme]}
-            </h3>
-          </MagicalCard>
-        ))}
-      </div>
-
-      <div className="flex justify-center mt-12">
-        <button
-          onClick={() => go("builder")}
-          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          Back to Story Builder
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function PrepareScreen({
-  theme,
-  characters,
-  selectedIds,
-  toggle,
-  customAngle,
-  setCustomAngle,
-  back,
-  next,
-}: {
-  theme: ThemeId
-  characters: Character[]
-  selectedIds: string[]
-  toggle: (id: string) => void
-  customAngle: string
-  setCustomAngle: (angle: string) => void
-  back: () => void
-  next: () => void
-}) {
-  const availableCharacters = characters.filter((c) => c.name.trim())
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      {/* SPECIAL: Theme image replaces Tommy's logo on this page */}
-      <div className="flex justify-center mb-8">
-        <div className="relative bg-white/15 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/30">
-          <img
-            src={CLOUDINARY.themes[theme]}
-            alt={THEME_LABEL[theme]}
-            className="w-full max-w-[512px] h-auto drop-shadow-2xl filter brightness-110 relative z-10"
-            style={{ imageRendering: 'auto' }}
-          />
-        </div>
-      </div>
-
-      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
-        Prepare Your {THEME_LABEL[theme]} Story
-      </h1>
-
-      {availableCharacters.length > 0 && (
-        <MagicalCard className="mb-8">
-          <h3 className="text-2xl font-bold text-white mb-6">Select Characters for This Story</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {availableCharacters.map((char) => {
-              const isSelected = selectedIds.includes(char.id)
-              return (
-                <div
-                  key={char.id}
-                  onClick={() => toggle(char.id)}
-                  className={`
-                    p-4 rounded-xl border-2 cursor-pointer transition-all duration-300
-                    ${isSelected
-                      ? "bg-white/20 border-white/50 shadow-lg"
-                      : "bg-white/5 border-white/20 hover:bg-white/10 hover:border-white/30"
-                    }
-                  `}
-                >
-                  <div className="flex items-center">
+            <div className="grid md:grid-cols-2 gap-8 mb-8">
+              <MagicalCard>
+                <div className="p-6">
+                  <h2 className="text-2xl font-bold text-white mb-4">Add Family Member</h2>
+                  <div className="space-y-4">
                     <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => {}} // Handled by parent div onClick
-                      className="mr-4 w-5 h-5 accent-white"
+                      type="text"
+                      placeholder="Character name"
+                      value={newCharacterName}
+                      onChange={(e) => setNewCharacterName(e.target.value)}
+                      className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30"
+                      onKeyDown={(e) => e.key === "Enter" && addCharacter()}
                     />
-                    <div className="text-white">
-                      <div className="font-semibold text-lg">{char.name}</div>
-                      {!char.isGuest && (
-                        <div className="text-sm text-white/70">
-                          {char.age && `Age: ${char.age}`}
-                          {char.age && char.personality && " • "}
-                          {char.personality && `${char.personality}`}
-                        </div>
-                      )}
-                      {char.isGuest && (
-                        <div className="text-sm text-blue-300">Guest Character</div>
-                      )}
-                    </div>
+                    <button
+                      onClick={addCharacter}
+                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                    >
+                      Add Character
+                    </button>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        </MagicalCard>
-      )}
+              </MagicalCard>
 
-      <MagicalCard className="mb-8">
-        <h3 className="text-2xl font-bold text-white mb-6">Custom Story Angle (Optional)</h3>
-        <textarea
-          value={customAngle}
-          onChange={(e) => setCustomAngle(e.target.value)}
-          placeholder="Add your own twist to this theme... (e.g., 'Make it about learning to share')"
-          rows={3}
-          className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                   text-white placeholder-white/60 focus:outline-none focus:ring-2 
-                   focus:ring-white/30 text-lg resize-none"
-        />
-      </MagicalCard>
-
-      <div className="flex justify-center gap-6">
-        <button
-          onClick={back}
-          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          Back to Themes
-        </button>
-        <button
-          onClick={next}
-          className="px-8 py-4 bg-purple-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-purple-300/30 shadow-xl hover:bg-purple-500/40 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          Review & Generate
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function ReviewScreen({
-  theme,
-  storyTitle,
-  setStoryTitle,
-  storyPromptUser,
-  setStoryPromptUser,
-  imagePrompt,
-  setImagePrompt,
-  back,
-  generate,
-}: {
-  theme: ThemeId
-  storyTitle: string
-  setStoryTitle: (title: string) => void
-  storyPromptUser: string
-  setStoryPromptUser: (prompt: string) => void
-  imagePrompt: string
-  setImagePrompt: (prompt: string) => void
-  back: () => void
-  generate: () => void
-}) {
-  return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
-        Review & Edit Your Story Details
-      </h1>
-
-      <div className="space-y-8">
-        <MagicalCard>
-          <h3 className="text-2xl font-bold text-white mb-6">Story Title</h3>
-          <input
-            type="text"
-            value={storyTitle}
-            onChange={(e) => setStoryTitle(e.target.value)}
-            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
-                     focus:ring-white/30 text-lg"
-          />
-        </MagicalCard>
-
-        <MagicalCard>
-          <h3 className="text-2xl font-bold text-white mb-6">Story Direction</h3>
-          <textarea
-            value={storyPromptUser}
-            onChange={(e) => setStoryPromptUser(e.target.value)}
-            rows={6}
-            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
-                     focus:ring-white/30 text-lg resize-none"
-          />
-        </MagicalCard>
-
-        <MagicalCard>
-          <h3 className="text-2xl font-bold text-white mb-6">Cover Image Description</h3>
-          <textarea
-            value={imagePrompt}
-            onChange={(e) => setImagePrompt(e.target.value)}
-            rows={4}
-            className="w-full px-6 py-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 
-                     text-white placeholder-white/60 focus:outline-none focus:ring-2 
-                     focus:ring-white/30 text-lg resize-none"
-          />
-        </MagicalCard>
-
-        <div className="flex justify-center gap-6">
-          <button
-            onClick={back}
-            className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                     border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                     hover:transform hover:scale-105"
-          >
-            Back
-          </button>
-          <button
-            onClick={generate}
-            className="px-8 py-4 bg-green-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
-                     border border-green-300/30 shadow-xl hover:bg-green-500/40 transition-all duration-300
-                     hover:transform hover:scale-105"
-          >
-            Generate Story
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function GeneratingScreen({ 
-  stage, 
-  error, 
-  back 
-}: { 
-  stage: "idle" | "story" | "image" | "done"
-  error: string | null
-  back: () => void
-}) {
-  if (error) {
-    return (
-      <div className="max-w-2xl mx-auto text-center">
-        <MagicalCard className="p-12">
-          <div className="text-6xl mb-8">😞</div>
-          <h1 className="text-3xl font-bold text-white mb-6 drop-shadow-lg">
-            Oops! Something went wrong
-          </h1>
-          <p className="text-white/80 text-lg mb-8">
-            {error}
-          </p>
-          <button
-            onClick={back}
-            className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                     border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                     hover:transform hover:scale-105"
-          >
-            Try Again
-          </button>
-        </MagicalCard>
-      </div>
-    )
-  }
-
-  const stageMessages = {
-    idle: "Getting ready...",
-    story: "Writing your magical story...",
-    image: "Painting the perfect cover...",
-    done: "Your story is ready!"
-  }
-
-  return (
-    <div className="max-w-2xl mx-auto text-center">
-      <MagicalCard className="p-12">
-        <div className="animate-spin w-16 h-16 border-4 border-white/30 border-t-white rounded-full mx-auto mb-8"></div>
-        <h1 className="text-3xl font-bold text-white mb-6 drop-shadow-lg">
-          Creating Your Story
-        </h1>
-        <p className="text-white/80 text-xl">
-          {stageMessages[stage]}
-        </p>
-      </MagicalCard>
-    </div>
-  )
-}
-
-function ReadingScreen({ 
-  story, 
-  go 
-}: { 
-  story: SavedStory
-  go: (s: Screen) => void 
-}) {
-  return (
-    <div className="max-w-4xl mx-auto">
-      <MagicalCard className="text-center mb-8">
-        <img
-          src={story.coverUrl}
-          alt={`Cover for ${story.title}`}
-          className="w-full max-w-md mx-auto rounded-2xl shadow-2xl mb-8"
-        />
-        <h1 className="text-4xl font-bold text-white mb-6 drop-shadow-lg">
-          {story.title}
-        </h1>
-        {story.isManual && (
-          <span className="inline-block px-4 py-2 bg-green-500/30 rounded-lg text-green-200 text-sm mb-6">
-            ✍️ Written by You
-          </span>
-        )}
-      </MagicalCard>
-
-      <MagicalCard className="mb-8">
-        <div className="prose prose-lg prose-invert max-w-none">
-          {story.body.split('\n\n').map((paragraph, idx) => (
-            <p key={idx} className="text-white/90 text-lg leading-relaxed mb-6">
-              {paragraph}
-            </p>
-          ))}
-        </div>
-      </MagicalCard>
-
-      <div className="flex justify-center gap-6">
-        <button
-          onClick={() => go("home")}
-          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          Home
-        </button>
-        <button
-          onClick={() => go("library")}
-          className="px-8 py-4 bg-blue-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-blue-300/30 shadow-xl hover:bg-blue-500/40 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          Library
-        </button>
-        <button
-          onClick={() => go("builder")}
-          className="px-8 py-4 bg-purple-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-purple-300/30 shadow-xl hover:bg-purple-500/40 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          Create Another
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function LibraryScreen({ 
-  stories, 
-  open, 
-  remove, 
-  go 
-}: {
-  stories: SavedStory[]
-  open: (story: SavedStory) => void
-  remove: (id: string) => void
-  go: (s: Screen) => void
-}) {
-  if (stories.length === 0) {
-    return (
-      <div className="max-w-4xl mx-auto text-center">
-        <h1 className="text-4xl font-bold text-white mb-12 drop-shadow-lg">
-          Your Story Library
-        </h1>
-        
-        <MagicalCard className="p-12">
-          <div className="flex justify-center">
-            <TommyIcon iconKey="storyLibrary" alt="Empty Library" className="opacity-50" />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-6">No stories yet!</h2>
-          <p className="text-white/80 text-lg mb-8">
-            Create your first magical story to start building your library.
-          </p>
-          <button
-            onClick={() => go("builder")}
-            className="px-8 py-4 bg-purple-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
-                     border border-purple-300/30 shadow-xl hover:bg-purple-500/40 transition-all duration-300
-                     hover:transform hover:scale-105"
-          >
-            Create Your First Story
-          </button>
-        </MagicalCard>
-
-        <div className="mt-12">
-          <button
-            onClick={() => go("home")}
-            className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                     border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                     hover:transform hover:scale-105"
-          >
-            Back to Home
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">
-        Your Story Library
-      </h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-        {stories.map((story) => (
-          <MagicalCard 
-            key={story.id}
-            className="group cursor-pointer hover:scale-105 transition-transform duration-300"
-            onClick={() => open(story)}
-          >
-            <img
-              src={story.coverUrl}
-              alt={`Cover for ${story.title}`}
-              className="w-full h-48 object-cover rounded-2xl mb-4 shadow-lg"
-            />
-            <h3 className="text-xl font-bold text-white mb-3 line-clamp-2 group-hover:text-yellow-200 transition-colors">
-              {story.title}
-            </h3>
-            <div className="flex items-center justify-between text-sm text-white/70 mb-4">
-              <span>
-                {new Date(story.createdAt).toLocaleDateString()}
-              </span>
-              {story.isManual && (
-                <span className="px-2 py-1 bg-green-500/20 rounded text-green-300">
-                  ✍️ Manual
-                </span>
-              )}
+              <MagicalCard>
+                <div className="p-6">
+                  <h2 className="text-2xl font-bold text-white mb-4">Add Guest</h2>
+                  <div className="space-y-4">
+                    <input
+                      type="text"
+                      placeholder="Guest name"
+                      value={newGuestName}
+                      onChange={(e) => setNewGuestName(e.target.value)}
+                      className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30"
+                      onKeyDown={(e) => e.key === "Enter" && addGuest()}
+                    />
+                    <button
+                      onClick={addGuest}
+                      className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-3 rounded-lg font-semibold hover:from-green-600 hover:to-blue-600 transition-all"
+                    >
+                      Add Guest
+                    </button>
+                  </div>
+                </div>
+              </MagicalCard>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                if (confirm("Are you sure you want to delete this story?")) {
-                  remove(story.id)
-                }
-              }}
-              className="w-full px-4 py-2 bg-red-500/20 backdrop-blur-md rounded-xl text-red-200 
-                       hover:bg-red-500/30 transition-all duration-300 border border-red-300/30"
-            >
-              Delete
-            </button>
-          </MagicalCard>
-        ))}
-      </div>
 
-      <div className="flex justify-center gap-6">
-        <button
-          onClick={() => go("home")}
-          className="px-8 py-4 bg-white/20 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-white/20 shadow-xl hover:bg-white/30 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          Home
-        </button>
-        <button
-          onClick={() => go("builder")}
-          className="px-8 py-4 bg-purple-500/30 backdrop-blur-md rounded-2xl text-white font-semibold 
-                   border border-purple-300/30 shadow-xl hover:bg-purple-500/40 transition-all duration-300
-                   hover:transform hover:scale-105"
-        >
-          Create Another Story
-        </button>
+            {characters.length > 0 && (
+              <MagicalCard>
+                <div className="p-6">
+                  <h2 className="text-2xl font-bold text-white mb-4">Your Characters</h2>
+                  <div className="grid gap-4">
+                    {characters.map((character) => (
+                      <div
+                        key={character.id}
+                        className="flex items-center justify-between p-4 bg-white/10 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-white font-medium">{character.name}</span>
+                          {character.isGuest && (
+                            <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded-full">
+                              Guest
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => deleteCharacter(character.id)}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </MagicalCard>
+            )}
+
+            <div className="text-center mt-8">
+              <button
+                onClick={() => go("home")}
+                className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+              >
+                Back to Home
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
+
+  if (screen === "builder") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          
+          <div className="max-w-5xl mx-auto">
+            <h1 className="text-4xl font-bold text-white mb-12 text-center drop-shadow-2xl">
+              How would you like to create your story?
+            </h1>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <MagicalCard
+                onClick={startManualStory}
+                glowColor="rgba(34, 197, 94, 0.2)"
+              >
+                <div className="flex flex-col items-center text-center py-4 px-4">
+                  <TommyIcon iconKey="tommyWrite" alt="Build Your Own Story" />
+                  <h3 className="text-xl font-bold text-white mt-3 mb-2">
+                    Build Your Own Story
+                  </h3>
+                  <p className="text-base text-white/80 leading-snug">
+                    Write a tale and we'll create the cover
+                  </p>
+                </div>
+              </MagicalCard>
+
+              <MagicalCard
+                onClick={startAIStory}
+                glowColor="rgba(168, 85, 247, 0.2)"
+              >
+                <div className="flex flex-col items-center text-center py-4 px-4">
+                  <TommyIcon iconKey="tommyAi" alt="AI Generate a Story" />
+                  <h3 className="text-xl font-bold text-white mt-3 mb-2">
+                    AI Generate a Story
+                  </h3>
+                  <p className="text-base text-white/80 leading-snug">
+                    Describe an idea and let Tommy spin the tale
+                  </p>
+                </div>
+              </MagicalCard>
+
+              <MagicalCard
+                onClick={() => go("themeList")}
+                glowColor="rgba(236, 72, 153, 0.2)"
+              >
+                <div className="flex flex-col items-center text-center py-4 px-4">
+                  <TommyIcon iconKey="tommyTheme" alt="Choose a Theme" />
+                  <h3 className="text-xl font-bold text-white mt-3 mb-2">
+                    Choose a Theme
+                  </h3>
+                  <p className="text-base text-white/80 leading-snug">
+                    Pick from six magical worlds
+                  </p>
+                </div>
+              </MagicalCard>
+            </div>
+
+            <div className="text-center mt-8">
+              <button
+                onClick={() => go("home")}
+                className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+              >
+                Back to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "manualBuilder") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
+              Write Your Story
+            </h1>
+
+            <MagicalCard>
+              <div className="p-8 space-y-6">
+                <div>
+                  <label className="block text-white font-semibold mb-3">Story Title</label>
+                  <input
+                    type="text"
+                    value={manualTitle}
+                    onChange={(e) => setManualTitle(e.target.value)}
+                    placeholder="Enter your story title..."
+                    className="w-full p-4 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 text-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white font-semibold mb-3">Your Story</label>
+                  <textarea
+                    value={manualContent}
+                    onChange={(e) => setManualContent(e.target.value)}
+                    placeholder="Write your magical story here..."
+                    rows={12}
+                    className="w-full p-4 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 text-lg leading-relaxed resize-none"
+                  />
+                </div>
+
+                {error && (
+                  <div className="text-red-300 text-center bg-red-500/20 p-3 rounded-lg">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => go("builder")}
+                    className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={proceedManualToReview}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                    disabled={!manualTitle.trim() || !manualContent.trim()}
+                  >
+                    Create Cover
+                  </button>
+                </div>
+              </div>
+            </MagicalCard>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "aiBuilder") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
+              Describe Your Story
+            </h1>
+
+            <MagicalCard>
+              <div className="p-8 space-y-6">
+                <div>
+                  <label className="block text-white font-semibold mb-3">What's your story about?</label>
+                  <textarea
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="Describe your story idea... (e.g., 'A magical adventure where kids discover a secret garden that can grant wishes')"
+                    rows={4}
+                    className="w-full p-4 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 text-lg leading-relaxed resize-none"
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-white font-semibold mb-3">Genre</label>
+                    <select
+                      value={aiGenre}
+                      onChange={(e) => setAiGenre(e.target.value)}
+                      className="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30"
+                    >
+                      <option value="Adventure">Adventure</option>
+                      <option value="Fantasy">Fantasy</option>
+                      <option value="Friendship">Friendship</option>
+                      <option value="Mystery">Mystery</option>
+                      <option value="Comedy">Comedy</option>
+                      <option value="Educational">Educational</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-semibold mb-3">Story Length</label>
+                    <select
+                      value={aiLength}
+                      onChange={(e) => setAiLength(e.target.value)}
+                      className="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30"
+                    >
+                      <option value="Short">Short (3-5 paragraphs)</option>
+                      <option value="Medium">Medium (6-8 paragraphs)</option>
+                      <option value="Long">Long (9-12 paragraphs)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {characters.length > 0 && (
+                  <div>
+                    <label className="block text-white font-semibold mb-3">Include Characters</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {characters.map((character) => (
+                        <label
+                          key={character.id}
+                          className="flex items-center gap-2 p-3 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedCharacters.some(c => c.id === character.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedCharacters(prev => [...prev, character])
+                              } else {
+                                setSelectedCharacters(prev => prev.filter(c => c.id !== character.id))
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-white text-sm">
+                            {character.name}
+                            {character.isGuest && (
+                              <span className="ml-1 text-blue-300">(Guest)</span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="text-red-300 text-center bg-red-500/20 p-3 rounded-lg">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => go("builder")}
+                    className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={proceedAIToReview}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                    disabled={!aiPrompt.trim()}
+                  >
+                    Generate Story
+                  </button>
+                </div>
+              </div>
+            </MagicalCard>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "themeList") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          <h1 className="text-4xl font-bold text-white mb-12 text-center drop-shadow-2xl">
+            Choose Your Adventure
+          </h1>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {themes.map((theme) => (
+              <MagicalCard
+                key={theme.id}
+                onClick={() => startThemeStory(theme)}
+                glowColor={`${theme.colors.primary}40`}
+                className="overflow-hidden"
+              >
+                <div className="aspect-video relative">
+                  <img
+                    src={theme.image}
+                    alt={theme.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <h3 className="text-xl font-bold text-white mb-2">{theme.name}</h3>
+                    <p className="text-white/90 text-sm">{theme.description}</p>
+                  </div>
+                </div>
+              </MagicalCard>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <button
+              onClick={() => go("builder")}
+              className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+            >
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "prepare") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          <div className="max-w-4xl mx-auto">
+            {selectedTheme && (
+              <div className="flex justify-center mb-8">
+                <img
+                  src={selectedTheme.image}
+                  alt={selectedTheme.name}
+                  className="w-full max-w-[400px] h-auto rounded-2xl drop-shadow-2xl"
+                />
+              </div>
+            )}
+
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
+              Prepare Your {selectedTheme?.name}
+            </h1>
+
+            <MagicalCard>
+              <div className="p-8 space-y-6">
+                {characters.length > 0 && (
+                  <div>
+                    <label className="block text-white font-semibold mb-4">Choose Characters for Your Story</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {characters.map((character) => (
+                        <label
+                          key={character.id}
+                          className="flex items-center gap-2 p-3 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedCharacters.some(c => c.id === character.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedCharacters(prev => [...prev, character])
+                              } else {
+                                setSelectedCharacters(prev => prev.filter(c => c.id !== character.id))
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-white text-sm">
+                            {character.name}
+                            {character.isGuest && (
+                              <span className="ml-1 text-blue-300">(Guest)</span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-white font-semibold mb-3">
+                    What should this story be about? (Optional)
+                  </label>
+                  <textarea
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="Add your own ideas for the story..."
+                    rows={3}
+                    className="w-full p-4 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30"
+                  />
+                </div>
+
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => go("themeList")}
+                    className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={proceedToReview}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            </MagicalCard>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "review") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
+              Review & Edit Prompts
+            </h1>
+
+            <div className="space-y-6">
+              <MagicalCard>
+                <div className="p-6">
+                  <h2 className="text-xl font-bold text-white mb-3">Story Title</h2>
+                  <input
+                    type="text"
+                    value={storyTitle}
+                    onChange={(e) => setStoryTitle(e.target.value)}
+                    className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30"
+                  />
+                </div>
+              </MagicalCard>
+
+              <MagicalCard>
+                <div className="p-6">
+                  <h2 className="text-xl font-bold text-white mb-3">Story Prompt</h2>
+                  <textarea
+                    value={storyPrompt}
+                    onChange={(e) => setStoryPrompt(e.target.value)}
+                    rows={4}
+                    className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 resize-none"
+                  />
+                </div>
+              </MagicalCard>
+
+              <MagicalCard>
+                <div className="p-6">
+                  <h2 className="text-xl font-bold text-white mb-3">Image Prompt</h2>
+                  <textarea
+                    value={imagePrompt}
+                    onChange={(e) => setImagePrompt(e.target.value)}
+                    rows={3}
+                    className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 resize-none"
+                  />
+                </div>
+              </MagicalCard>
+
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={() => go(selectedTheme ? "prepare" : "builder")}
+                  className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={generateStory}
+                  disabled={!storyTitle.trim() || !storyPrompt.trim() || !imagePrompt.trim()}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Generate Story
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "generating") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          
+          <div className="max-w-md mx-auto">
+            <MagicalCard>
+              <div className="p-12 text-center">
+                <div className="animate-spin w-16 h-16 border-4 border-white/20 border-t-white rounded-full mx-auto mb-6" />
+                <h2 className="text-2xl font-bold text-white mb-4">{generationStage}</h2>
+                <p className="text-white/80">Tommy is working his magic...</p>
+              </div>
+            </MagicalCard>
+
+            {error && (
+              <MagicalCard className="mt-6">
+                <div className="p-6 text-center">
+                  <div className="text-red-300 mb-4">{error}</div>
+                  <button
+                    onClick={() => go("review")}
+                    className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </MagicalCard>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "reading" && currentStory) {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          
+          <div className="max-w-4xl mx-auto">
+            <MagicalCard>
+              <div className="p-8">
+                <div className="text-center mb-8">
+                  <img
+                    src={currentStory.imageUrl}
+                    alt={currentStory.title}
+                    className="w-full max-w-md mx-auto rounded-lg shadow-2xl mb-6"
+                  />
+                  <h1 className="text-3xl font-bold text-white mb-4">{currentStory.title}</h1>
+                </div>
+
+                <div className="prose prose-invert prose-lg max-w-none">
+                  {currentStory.content.split('\n\n').map((paragraph, index) => (
+                    <p key={index} className="text-white/90 leading-relaxed mb-4">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+
+                <div className="flex gap-4 justify-center mt-8">
+                  <button
+                    onClick={() => go("home")}
+                    className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                  >
+                    Home
+                  </button>
+                  <button
+                    onClick={() => go("library")}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Library
+                  </button>
+                  <button
+                    onClick={() => go("builder")}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                  >
+                    Create Another
+                  </button>
+                </div>
+              </div>
+            </MagicalCard>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "library") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          
+          <div className="max-w-6xl mx-auto">
+            <h1 className="text-4xl font-bold text-white mb-12 text-center drop-shadow-2xl">
+              Your Story Library
+            </h1>
+
+            {stories.length === 0 ? (
+              <MagicalCard>
+                <div className="p-12 text-center">
+                  <TommyIcon iconKey="tommyRead" alt="Empty library" className="mx-auto mb-6" />
+                  <h2 className="text-2xl font-bold text-white mb-4">No stories yet!</h2>
+                  <p className="text-white/80 mb-6">Create your first magical adventure</p>
+                  <button
+                    onClick={() => go("builder")}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                  >
+                    Create Your First Story
+                  </button>
+                </div>
+              </MagicalCard>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {stories.map((story) => (
+                  <MagicalCard key={story.id} className="overflow-hidden">
+                    <div className="aspect-[3/4] relative">
+                      <img
+                        src={story.imageUrl}
+                        alt={story.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs text-white/60">
+                            {story.storyType === "manual" ? "✍️ Written" : 
+                             story.storyType === "ai" ? "🤖 AI Generated" : 
+                             "🎨 Theme Story"}
+                          </span>
+                        </div>
+                        <h3 className="text-white font-bold text-lg mb-2 line-clamp-2">{story.title}</h3>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => readStory(story)}
+                            className="flex-1 bg-blue-600 text-white py-2 px-3 rounded text-sm font-semibold hover:bg-blue-700 transition-colors"
+                          >
+                            Read
+                          </button>
+                          <button
+                            onClick={() => deleteStory(story.id)}
+                            className="bg-red-600 text-white py-2 px-3 rounded text-sm font-semibold hover:bg-red-700 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </MagicalCard>
+                ))}
+              </div>
+            )}
+
+            <div className="text-center mt-8">
+              <button
+                onClick={() => go("home")}
+                className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+              >
+                Back to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return null
 }
