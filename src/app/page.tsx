@@ -270,7 +270,7 @@ function TommyIcon({
     <img
       src={CLOUDINARY.icons[iconKey]}
       alt={alt}
-      className={`w-16 h-16 object-contain drop-shadow-lg filter brightness-110 ${className}`}
+      className={`w-80 h-80 object-contain drop-shadow-lg filter brightness-110 ${className}`}
       style={{ imageRendering: 'auto' }}
       onError={(e) => {
         console.error(`Tommy icon ${iconKey} failed to load:`, e);
