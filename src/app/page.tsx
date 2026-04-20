@@ -209,8 +209,8 @@ function TommyHeaderLogo({ className = "" }: { className?: string }) {
       <img
         src={CLOUDINARY.tommyLogo}
         alt="StoryLoom — Tommy's magical stories"
-        className="w-full max-w-[500px] h-auto drop-shadow-2xl filter brightness-125 relative z-50"
-        style={{ imageRendering: 'auto' }}
+        className="w-full max-w-[500px] h-auto drop-shadow-2xl filter brightness-125 relative z-50 opacity-100"
+        style={{ imageRendering: 'auto', opacity: 1 }}
         onError={(e) => {
           console.error('Tommy header logo failed to load:', e);
           const target = e.target as HTMLImageElement;
@@ -236,8 +236,8 @@ function TommyLogo({ size = "large", className = "" }: { size?: "large" | "mediu
       <img
         src={CLOUDINARY.tommyLogo}
         alt="StoryLoom — Tommy's magical stories"
-        className={`${sizeClasses[size]} drop-shadow-2xl filter brightness-125 relative z-50`}
-        style={{ imageRendering: 'auto' }}
+        className={`${sizeClasses[size]} drop-shadow-2xl filter brightness-125 relative z-50 opacity-100`}
+        style={{ imageRendering: 'auto', opacity: 1 }}
         onError={(e) => {
           console.error('Tommy main logo failed to load:', e);
           const target = e.target as HTMLImageElement;
