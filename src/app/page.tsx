@@ -114,7 +114,7 @@ function dedupeTommy(chars: PromptCharacter[]): PromptCharacter[] {
 
 function AnimatedBackground() {
   return (
-    <div className="fixed inset-0 overflow-hidden -z-10">
+    <div className="fixed inset-0 overflow-hidden -z-50">{/* Changed from -z-10 to -z-50 */}
       {/* Base gradient layer */}
       <div 
         className="absolute inset-0 w-full h-full"
@@ -206,23 +206,20 @@ function AnimatedBackground() {
 function TommyHeaderLogo({ className = "" }: { className?: string }) {
   return (
     <div className={`flex justify-center mb-8 ${className}`}>
-      {/* FIXED: Background protection with semi-transparent backdrop */}
-      <div className="relative bg-white/20 backdrop-blur-lg rounded-3xl p-6 shadow-2xl border border-white/30">
-        <img
-          src={CLOUDINARY.tommyLogo}
-          alt="StoryLoom — Tommy's magical stories"
-          className="w-full max-w-[500px] h-auto drop-shadow-2xl filter brightness-110 relative z-10"
-          style={{ imageRendering: 'auto' }}
-          onError={(e) => {
-            console.error('Tommy header logo failed to load:', e);
-            const target = e.target as HTMLImageElement;
-            if (target.src !== CLOUDINARY.tommyLogo) {
-              target.src = CLOUDINARY.tommyLogo;
-            }
-          }}
-          onLoad={() => console.log('Tommy header logo loaded successfully')}
-        />
-      </div>
+      <img
+        src={CLOUDINARY.tommyLogo}
+        alt="StoryLoom — Tommy's magical stories"
+        className="w-full max-w-[500px] h-auto drop-shadow-2xl filter brightness-125 relative z-50"
+        style={{ imageRendering: 'auto' }}
+        onError={(e) => {
+          console.error('Tommy header logo failed to load:', e);
+          const target = e.target as HTMLImageElement;
+          if (target.src !== CLOUDINARY.tommyLogo) {
+            target.src = CLOUDINARY.tommyLogo;
+          }
+        }}
+        onLoad={() => console.log('Tommy header logo loaded successfully')}
+      />
     </div>
   )
 }
@@ -236,23 +233,20 @@ function TommyLogo({ size = "large", className = "" }: { size?: "large" | "mediu
   
   return (
     <div className={`flex justify-center ${className}`}>
-      {/* FIXED: Background protection for main logo too */}
-      <div className="relative bg-white/15 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/30">
-        <img
-          src={CLOUDINARY.tommyLogo}
-          alt="StoryLoom — Tommy's magical stories"
-          className={`${sizeClasses[size]} drop-shadow-2xl filter brightness-110 relative z-10`}
-          style={{ imageRendering: 'auto' }}
-          onError={(e) => {
-            console.error('Tommy main logo failed to load:', e);
-            const target = e.target as HTMLImageElement;
-            if (target.src !== CLOUDINARY.tommyLogo) {
-              target.src = CLOUDINARY.tommyLogo;
-            }
-          }}
-          onLoad={() => console.log('Tommy main logo loaded successfully')}
-        />
-      </div>
+      <img
+        src={CLOUDINARY.tommyLogo}
+        alt="StoryLoom — Tommy's magical stories"
+        className={`${sizeClasses[size]} drop-shadow-2xl filter brightness-125 relative z-50`}
+        style={{ imageRendering: 'auto' }}
+        onError={(e) => {
+          console.error('Tommy main logo failed to load:', e);
+          const target = e.target as HTMLImageElement;
+          if (target.src !== CLOUDINARY.tommyLogo) {
+            target.src = CLOUDINARY.tommyLogo;
+          }
+        }}
+        onLoad={() => console.log('Tommy main logo loaded successfully')}
+      />
     </div>
   )
 }
@@ -272,19 +266,20 @@ function TommyIcon({
 }) {
   return (
     <div className="relative">
-      {/* FIXED: Much larger icon size with better background protection */}
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/20">
-        <img
-          src={CLOUDINARY.icons[iconKey]}
-          alt={alt}
-          className={`w-32 h-32 object-contain drop-shadow-xl filter brightness-110 relative z-10 ${className}`}
-          style={{ imageRendering: 'auto' }}
-          onError={(e) => {
-            console.error(`Tommy icon ${iconKey} failed to load:`, e);
-          }}
-          onLoad={() => console.log(`Tommy icon ${iconKey} loaded successfully`)}
-        />
-      </div>
+      <img
+        src={CLOUDINARY.icons[iconKey]}
+        alt={alt}
+        className={`w-120 h-120 object-contain drop-shadow-xl filter brightness-110 relative z-30 ${className}`}
+        style={{ 
+          imageRendering: 'auto',
+          width: '480px',
+          height: '480px'
+        }}
+        onError={(e) => {
+          console.error(`Tommy icon ${iconKey} failed to load:`, e);
+        }}
+        onLoad={() => console.log(`Tommy icon ${iconKey} loaded successfully`)}
+      />
     </div>
   )
 }
