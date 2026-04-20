@@ -1,13 +1,9 @@
 "use client"
 
 // src/app/page.tsx
-// StoryLoom — Premium Design with Animated Background & Prominent Tommy Logo
+// StoryLoom — Fixed Animation Design (No boundary issues)
 //
-// Features:
-// - Stunning animated morphing radial gradient background
-// - Tommy's logo prominently displayed on all pages
-// - Elevated magical design throughout
-// - Full Cloudinary + AI integration
+// FIXED: Background animation properly contained within viewport
 
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
@@ -103,65 +99,90 @@ function dedupeTommy(chars: PromptCharacter[]): PromptCharacter[] {
 }
 
 // ===================================================================
-// ANIMATED BACKGROUND COMPONENT
+// FIXED ANIMATED BACKGROUND COMPONENT
 // ===================================================================
 
 function AnimatedBackground() {
   return (
     <div className="fixed inset-0 overflow-hidden -z-10">
+      {/* Base gradient layer */}
       <div 
-        className="absolute inset-0 w-full h-full animate-pulse"
+        className="absolute inset-0 w-full h-full"
         style={{
-          background: `
-            radial-gradient(circle at 20% 20%, rgba(255, 107, 107, 0.4) 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, rgba(78, 205, 196, 0.4) 0%, transparent 50%),
-            radial-gradient(circle at 60% 40%, rgba(255, 195, 113, 0.3) 0%, transparent 50%),
-            radial-gradient(circle at 40% 70%, rgba(199, 125, 255, 0.4) 0%, transparent 50%),
-            linear-gradient(135deg, #667eea 0%, #764ba2 100%)
-          `,
-          animation: `
-            backgroundShift 8s ease-in-out infinite,
-            colorMorph 12s ease-in-out infinite
-          `
+          background: `linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)`,
+          animation: `colorShift 8s ease-in-out infinite`
         }}
       />
+      
+      {/* Floating gradient orbs - FIXED: No transform translations */}
       <div 
-        className="absolute inset-0 w-full h-full opacity-60"
+        className="absolute w-full h-full"
         style={{
           background: `
-            radial-gradient(circle at 80% 20%, rgba(255, 107, 107, 0.3) 0%, transparent 40%),
-            radial-gradient(circle at 20% 80%, rgba(78, 205, 196, 0.3) 0%, transparent 40%),
-            radial-gradient(circle at 40% 60%, rgba(255, 195, 113, 0.4) 0%, transparent 50%)
+            radial-gradient(circle at 25% 25%, rgba(255, 107, 107, 0.4) 0%, transparent 40%),
+            radial-gradient(circle at 75% 75%, rgba(78, 205, 196, 0.4) 0%, transparent 40%),
+            radial-gradient(circle at 50% 50%, rgba(255, 195, 113, 0.3) 0%, transparent 35%)
           `,
-          animation: `
-            backgroundShift 10s ease-in-out infinite reverse,
-            colorMorph 15s ease-in-out infinite
-          `
+          animation: `orbShift 10s ease-in-out infinite`
         }}
       />
+      
+      {/* Secondary floating orbs */}
+      <div 
+        className="absolute w-full h-full opacity-70"
+        style={{
+          background: `
+            radial-gradient(circle at 80% 20%, rgba(199, 125, 255, 0.3) 0%, transparent 30%),
+            radial-gradient(circle at 20% 80%, rgba(255, 182, 193, 0.3) 0%, transparent 35%),
+            radial-gradient(circle at 60% 40%, rgba(135, 206, 250, 0.25) 0%, transparent 25%)
+          `,
+          animation: `orbShiftAlt 12s ease-in-out infinite reverse`
+        }}
+      />
+      
       <style jsx global>{`
-        @keyframes backgroundShift {
+        @keyframes colorShift {
+          0% { filter: hue-rotate(0deg) brightness(1) saturate(1); }
+          25% { filter: hue-rotate(90deg) brightness(1.1) saturate(1.2); }
+          50% { filter: hue-rotate(180deg) brightness(0.9) saturate(0.8); }
+          75% { filter: hue-rotate(270deg) brightness(1.05) saturate(1.1); }
+          100% { filter: hue-rotate(360deg) brightness(1) saturate(1); }
+        }
+        
+        @keyframes orbShift {
           0%, 100% { 
-            transform: translateX(0%) translateY(0%) scale(1); 
+            background: 
+              radial-gradient(circle at 25% 25%, rgba(255, 107, 107, 0.4) 0%, transparent 40%),
+              radial-gradient(circle at 75% 75%, rgba(78, 205, 196, 0.4) 0%, transparent 40%),
+              radial-gradient(circle at 50% 50%, rgba(255, 195, 113, 0.3) 0%, transparent 35%);
           }
-          25% { 
-            transform: translateX(-10%) translateY(-15%) scale(1.1); 
+          33% { 
+            background: 
+              radial-gradient(circle at 40% 10%, rgba(255, 107, 107, 0.5) 0%, transparent 45%),
+              radial-gradient(circle at 60% 90%, rgba(78, 205, 196, 0.3) 0%, transparent 35%),
+              radial-gradient(circle at 20% 60%, rgba(255, 195, 113, 0.4) 0%, transparent 40%);
           }
-          50% { 
-            transform: translateX(15%) translateY(-10%) scale(0.95); 
-          }
-          75% { 
-            transform: translateX(-5%) translateY(20%) scale(1.05); 
+          66% { 
+            background: 
+              radial-gradient(circle at 70% 30%, rgba(255, 107, 107, 0.3) 0%, transparent 35%),
+              radial-gradient(circle at 30% 70%, rgba(78, 205, 196, 0.5) 0%, transparent 45%),
+              radial-gradient(circle at 80% 80%, rgba(255, 195, 113, 0.3) 0%, transparent 30%);
           }
         }
         
-        @keyframes colorMorph {
-          0% { filter: hue-rotate(0deg) saturate(1); }
-          20% { filter: hue-rotate(72deg) saturate(1.2); }
-          40% { filter: hue-rotate(144deg) saturate(0.8); }
-          60% { filter: hue-rotate(216deg) saturate(1.1); }
-          80% { filter: hue-rotate(288deg) saturate(0.9); }
-          100% { filter: hue-rotate(360deg) saturate(1); }
+        @keyframes orbShiftAlt {
+          0%, 100% { 
+            background: 
+              radial-gradient(circle at 80% 20%, rgba(199, 125, 255, 0.3) 0%, transparent 30%),
+              radial-gradient(circle at 20% 80%, rgba(255, 182, 193, 0.3) 0%, transparent 35%),
+              radial-gradient(circle at 60% 40%, rgba(135, 206, 250, 0.25) 0%, transparent 25%);
+          }
+          50% { 
+            background: 
+              radial-gradient(circle at 15% 40%, rgba(199, 125, 255, 0.4) 0%, transparent 35%),
+              radial-gradient(circle at 85% 60%, rgba(255, 182, 193, 0.25) 0%, transparent 30%),
+              radial-gradient(circle at 40% 20%, rgba(135, 206, 250, 0.3) 0%, transparent 28%);
+          }
         }
       `}</style>
     </div>
@@ -560,6 +581,8 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
   )
 }
 
+// [Rest of the screen components remain exactly the same as before...]
+
 function CharactersScreen(props: {
   characters: Character[]
   addFamilyMember: () => void
@@ -762,6 +785,8 @@ function ThemeListScreen({
     </div>
   )
 }
+
+// ... [All other screen components remain exactly the same]
 
 function PrepareScreen(props: {
   theme: ThemeId
