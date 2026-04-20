@@ -1,5 +1,5 @@
 // src/lib/storyPrompts.ts
-// Fixed version - simplified to ensure TypeScript compilation
+// Fixed version - using Array.from to avoid downlevelIteration error
 
 export type ThemeId = "space" | "jungle" | "ocean" | "dinosaur" | "pirate" | "monster-trucks"
 
@@ -119,7 +119,8 @@ export function buildStoryTitle(opts: {
     "monster-trucks": "Monster Truck Rally",
   }
 
-  const names = [...new Set(opts.characters.map((c) => c.name))]
+  // Fixed: Use Array.from instead of spread operator to avoid downlevelIteration error
+  const names = Array.from(new Set(opts.characters.map((c) => c.name)))
     .filter((n) => n.toLowerCase() !== "tommy")
 
   if (names.length === 0) return `Tommy's ${themeLabel[opts.theme]}`
