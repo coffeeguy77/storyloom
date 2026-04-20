@@ -209,8 +209,10 @@ function TommyHeaderLogo({ className = "" }: { className?: string }) {
       <img
         src={CLOUDINARY.tommyLogo}
         alt="StoryLoom — Tommy's magical stories"
-        className="w-full max-w-[400px] h-auto drop-shadow-2xl filter brightness-110"
-        style={{ imageRendering: 'auto' }}
+        className={`relative z-10 ${sizeClasses[size]} drop-shadow-2xl filter brightness-125 saturate-110`}
+          style={{ imageRendering: 'auto' }}
+        //className="w-full max-w-[400px] h-auto drop-shadow-2xl filter brightness-110"
+        //style={{ imageRendering: 'auto' }}
         onError={(e) => {
           console.error('Tommy header logo failed to load:', e);
           // Fallback to direct URL if needed
