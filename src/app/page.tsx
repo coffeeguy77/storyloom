@@ -797,17 +797,17 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
         <MagicalCard
           onClick={() => go("characters")}
-          className="text-center flex flex-col"
+          className="text-center flex flex-col h-96 max-h-96"
           glowColor="rgba(255, 107, 107, 0.2)"
         >
-          <div className="flex justify-center -mt-2">
+          <div className="flex justify-center flex-shrink-0 -mt-2">
             <TommyIcon iconKey="addFamily" alt="Add Your Family" />
           </div>
-          <div className="-mt-4 pb-4 px-3">
-            <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-lg">
+          <div className="flex-1 flex flex-col justify-end -mt-6 pb-3 px-3">
+            <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
               Add Your Family
             </h3>
-            <p className="text-white/80 text-lg leading-relaxed">
+            <p className="text-white/80 text-base leading-snug">
               Create profiles for your children and family members to include them in magical stories
             </p>
           </div>
@@ -815,17 +815,17 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
 
         <MagicalCard
           onClick={() => go("builder")}
-          className="text-center flex flex-col"
+          className="text-center flex flex-col h-96 max-h-96"
           glowColor="rgba(78, 205, 196, 0.2)"
         >
-          <div className="flex justify-center -mt-2">
+          <div className="flex justify-center flex-shrink-0 -mt-2">
             <TommyIcon iconKey="createStories" alt="Create Stories" />
           </div>
-          <div className="-mt-4 pb-4 px-3">
-            <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-lg">
+          <div className="flex-1 flex flex-col justify-end -mt-6 pb-3 px-3">
+            <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
               Create Stories
             </h3>
-            <p className="text-white/80 text-lg leading-relaxed">
+            <p className="text-white/80 text-base leading-snug">
               Choose from themes, write your own, or let AI create personalized adventures
             </p>
           </div>
@@ -833,17 +833,17 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
 
         <MagicalCard
           onClick={() => go("library")}
-          className="text-center flex flex-col"
+          className="text-center flex flex-col h-96 max-h-96"
           glowColor="rgba(199, 125, 255, 0.2)"
         >
-          <div className="flex justify-center -mt-2">
+          <div className="flex justify-center flex-shrink-0 -mt-2">
             <TommyIcon iconKey="storyLibrary" alt="Story Library" />
           </div>
-          <div className="-mt-4 pb-4 px-3">
-            <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-lg">
+          <div className="flex-1 flex flex-col justify-end -mt-6 pb-3 px-3">
+            <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
               Story Library
             </h3>
-            <p className="text-white/80 text-lg leading-relaxed">
+            <p className="text-white/80 text-base leading-snug">
               Browse and read all your saved stories with beautiful cover art
             </p>
           </div>
@@ -985,17 +985,17 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
         <MagicalCard 
           onClick={() => go("manualBuilder")}
-          className="text-center flex flex-col"
+          className="text-center flex flex-col h-96 max-h-96"
           glowColor="rgba(255, 195, 113, 0.2)"
         >
-          <div className="flex justify-center -mt-2">
+          <div className="flex justify-center flex-shrink-0 -mt-2">
             <TommyIcon iconKey="buildStory" alt="Build Your Own Story" />
           </div>
-          <div className="-mt-4 pb-4 px-3">
-            <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-lg">
+          <div className="flex-1 flex flex-col justify-end -mt-6 pb-3 px-3">
+            <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
               Build Your Own Story
             </h3>
-            <p className="text-white/80 text-lg leading-relaxed">
+            <p className="text-white/80 text-base leading-snug">
               Write your own magical tale and we'll create a beautiful cover image
             </p>
           </div>
@@ -1003,17 +1003,17 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
 
         <MagicalCard 
           onClick={() => go("aiBuilder")}
-          className="text-center flex flex-col"
+          className="text-center flex flex-col h-96 max-h-96"
           glowColor="rgba(135, 206, 250, 0.2)"
         >
-          <div className="flex justify-center -mt-2">
+          <div className="flex justify-center flex-shrink-0 -mt-2">
             <TommyIcon iconKey="aiGenerate" alt="AI Generate a Story" />
           </div>
-          <div className="-mt-4 pb-4 px-3">
-            <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-lg">
+          <div className="flex-1 flex flex-col justify-end -mt-6 pb-3 px-3">
+            <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
               AI Generate a Story
             </h3>
-            <p className="text-white/80 text-lg leading-relaxed">
+            <p className="text-white/80 text-base leading-snug">
               Describe any story idea and our AI will create a complete tale for you
             </p>
           </div>
@@ -1021,17 +1021,17 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
 
         <MagicalCard 
           onClick={() => go("themeList")}
-          className="text-center flex flex-col"
+          className="text-center flex flex-col h-96 max-h-96"
           glowColor="rgba(255, 107, 107, 0.2)"
         >
-          <div className="flex justify-center -mt-2">
+          <div className="flex justify-center flex-shrink-0 -mt-2">
             <TommyIcon iconKey="chooseTheme" alt="Choose from a Theme" />
           </div>
-          <div className="-mt-4 pb-4 px-3">
-            <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-lg">
+          <div className="flex-1 flex flex-col justify-end -mt-6 pb-3 px-3">
+            <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
               Choose from a Theme
             </h3>
-            <p className="text-white/80 text-lg leading-relaxed">
+            <p className="text-white/80 text-base leading-snug">
               Pick a magical theme and we'll create a personalized story with your characters
             </p>
           </div>
