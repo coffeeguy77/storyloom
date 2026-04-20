@@ -1,9 +1,9 @@
 "use client"
 
 // src/app/page.tsx
-// StoryLoom — Fixed Animation Design (No boundary issues)
+// StoryLoom — COMPLETE IMPLEMENTATION with working story builders
 //
-// FIXED: Background animation properly contained within viewport
+// NEW: Full implementations of "Build Your Own Story" and "AI Generate a Story"
 
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
@@ -59,17 +59,20 @@ type SavedStory = {
   title: string
   body: string
   coverUrl: string
-  theme: ThemeId
+  theme: ThemeId | "custom"
   imagePrompt: string
   storyPromptUser: string
   createdAt: number
   characterNames: string[]
+  isManual?: boolean  // NEW: Track if user-written
 }
 
 type Screen =
   | "home"
   | "characters"
   | "builder"
+  | "manualBuilder"  // NEW: Build your own story
+  | "aiBuilder"      // NEW: AI generate story
   | "themeList"
   | "prepare"
   | "review"
@@ -311,6 +314,15 @@ export default function StoryLoomPage() {
   // Current/reading story
   const [currentStory, setCurrentStory] = useState<SavedStory | null>(null)
 
+  // NEW: Manual builder state
+  const [manualTitle, setManualTitle] = useState("")
+  const [manualStory, setManualStory] = useState("")
+
+  // NEW: AI builder state  
+  const [aiPrompt, setAiPrompt] = useState("")
+  const [aiGenre, setAiGenre] = useState("adventure")
+  const [aiLength, setAiLength] = useState("medium")
+
   // ---------- Character editor ----------
   const addFamilyMember = () => {
     setCharacters((prev) => [
@@ -372,6 +384,158 @@ export default function StoryLoomPage() {
     setImagePrompt(imgPrompt)
 
     setScreen("review")
+  }
+
+  // ---------- NEW: Manual story save ----------
+  const saveManualStory = async () => {
+    if (!manualTitle.trim() || !manualStory.trim()) {
+      alert("Please fill in both title and story!")
+      return
+    }
+
+    setScreen("generating")
+    setGenError(null)
+
+    try {
+      // Generate cover image for manual story
+      setGenStage("image")
+      const imgRes = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `Whimsical children's book cover illustration for a story titled "${manualTitle}". Beautiful, colorful, magical style with soft lighting and fantasy elements. Story excerpt: "${manualStory.slice(0, 200)}"`,
+          theme: "custom",
+          storyTitle: manualTitle,
+          quality: "standard", 
+          size: "1024x1024",
+          style: "vivid",
+        }),
+      })
+
+      if (!imgRes.ok) {
+        throw new Error(`Cover generation failed`)
+      }
+      const { url: coverUrl }: { url: string } = await imgRes.json()
+
+      // Save manual story
+      const saved: SavedStory = {
+        id: uid(),
+        title: manualTitle,
+        body: manualStory,
+        coverUrl,
+        theme: "custom",
+        imagePrompt: `Manual story cover for "${manualTitle}"`,
+        storyPromptUser: "User-written story",
+        createdAt: Date.now(),
+        characterNames: [],
+        isManual: true,
+      }
+      
+      setStories((prev) => [saved, ...prev])
+      setCurrentStory(saved)
+      setGenStage("done")
+      setScreen("reading")
+      
+      // Reset form
+      setManualTitle("")
+      setManualStory("")
+    } catch (err) {
+      console.error(err)
+      setGenError(err instanceof Error ? err.message : "Unknown error")
+      setGenStage("idle")
+    }
+  }
+
+  // ---------- NEW: AI story generation ----------
+  const generateAiStory = async () => {
+    if (!aiPrompt.trim()) {
+      alert("Please describe what story you'd like!")
+      return
+    }
+
+    setScreen("generating")
+    setGenError(null)
+
+    try {
+      // 1. Generate story
+      setGenStage("story")
+      const characterNames = characters.filter(c => c.name.trim()).map(c => c.name)
+      const characterContext = characterNames.length > 0 
+        ? ` Include these characters if relevant: ${characterNames.join(", ")}.`
+        : ""
+
+      const lengthMap = {
+        short: "Keep it short and sweet (3-4 paragraphs).",
+        medium: "Make it a good medium length (5-7 paragraphs).", 
+        long: "Make it a longer, detailed story (8-12 paragraphs)."
+      }
+
+      const systemPrompt = `You are a children's storyteller. Write engaging, wholesome stories for kids aged 4-10. Use simple language, vivid descriptions, and positive messages. Focus on friendship, adventure, and learning.`
+      
+      const userPrompt = `Write a ${aiGenre} story about: ${aiPrompt}${characterContext} ${lengthMap[aiLength as keyof typeof lengthMap]} Make sure it has a clear beginning, middle, and end with a positive message.`
+
+      const storyRes = await fetch("/api/generate-story", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemPrompt,
+          userPrompt,
+        }),
+      })
+
+      if (!storyRes.ok) {
+        throw new Error(`Story generation failed`)
+      }
+      const { story }: { story: string } = await storyRes.json()
+
+      // 2. Generate cover
+      setGenStage("image")
+      const imgRes = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `Whimsical children's book cover illustration in ${aiGenre} style. ${aiPrompt}. Beautiful, colorful, magical artwork with soft lighting and fantasy elements. Story excerpt: "${story.slice(0, 200)}"`,
+          theme: "custom",
+          storyTitle: `AI Generated ${aiGenre} Story`,
+          quality: "standard",
+          size: "1024x1024", 
+          style: "vivid",
+        }),
+      })
+
+      if (!imgRes.ok) {
+        throw new Error(`Cover generation failed`)
+      }
+      const { url: coverUrl }: { url: string } = await imgRes.json()
+
+      // 3. Save
+      const saved: SavedStory = {
+        id: uid(),
+        title: `The ${aiGenre.charAt(0).toUpperCase() + aiGenre.slice(1)} of ${aiPrompt.slice(0, 30)}${aiPrompt.length > 30 ? "..." : ""}`,
+        body: story,
+        coverUrl,
+        theme: "custom",
+        imagePrompt: `AI generated ${aiGenre} cover`,
+        storyPromptUser: aiPrompt,
+        createdAt: Date.now(),
+        characterNames,
+        isManual: false,
+      }
+
+      setStories((prev) => [saved, ...prev])
+      setCurrentStory(saved)
+      setGenStage("done")  
+      setScreen("reading")
+      
+      // Reset form
+      setAiPrompt("")
+      setAiGenre("adventure")
+      setAiLength("medium")
+    } catch (err) {
+      console.error(err)
+      setGenError(err instanceof Error ? err.message : "Unknown error")
+      setGenStage("idle")
+    }
   }
 
   // ---------- Generation ----------
@@ -465,6 +629,29 @@ export default function StoryLoomPage() {
             />
           )}
           {screen === "builder" && <BuilderScreen go={setScreen} />}
+          {screen === "manualBuilder" && (
+            <ManualBuilderScreen
+              title={manualTitle}
+              setTitle={setManualTitle}
+              story={manualStory}
+              setStory={setManualStory}
+              save={saveManualStory}
+              go={setScreen}
+            />
+          )}
+          {screen === "aiBuilder" && (
+            <AiBuilderScreen
+              prompt={aiPrompt}
+              setPrompt={setAiPrompt}
+              genre={aiGenre}
+              setGenre={setAiGenre}
+              length={aiLength}
+              setLength={setAiLength}
+              characters={characters}
+              generate={generateAiStory}
+              go={setScreen}
+            />
+          )}
           {screen === "themeList" && <ThemeListScreen pickTheme={pickTheme} go={setScreen} />}
           {screen === "prepare" && selectedTheme && (
             <PrepareScreen
@@ -496,7 +683,7 @@ export default function StoryLoomPage() {
             />
           )}
           {screen === "generating" && (
-            <GeneratingScreen stage={genStage} error={genError} back={() => setScreen("review")} />
+            <GeneratingScreen stage={genStage} error={genError} back={() => setScreen("home")} />
           )}
           {screen === "reading" && currentStory && (
             <ReadingScreen story={currentStory} go={setScreen} />
@@ -580,8 +767,6 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
     </div>
   )
 }
-
-// [Rest of the screen components remain exactly the same as before...]
 
 function CharactersScreen(props: {
   characters: Character[]
@@ -672,8 +857,7 @@ function CharactersScreen(props: {
         </button>
         <button
           onClick={() => go("builder")}
-          disabled={characters.filter((c) => c.name.trim()).length === 0}
-          className="px-8 py-3 bg-pink-600 hover:bg-pink-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105 disabled:transform-none disabled:shadow-none"
+          className="px-8 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105"
         >
           Continue to Story Builder →
         </button>
@@ -688,23 +872,23 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
       id: "own",
       icon: "✍️",
       title: "Build Your Own Story",
-      desc: "Write it yourself with a little help.",
-      action: () => alert("Custom story builder — coming soon!"),
+      desc: "Write your own magical tale with a custom AI-generated cover.",
+      action: () => go("manualBuilder"),  // NEW: Navigate to manual builder
       color: "rgba(34, 197, 94, 0.3)"
     },
     {
       id: "ai", 
       icon: "🤖",
       title: "AI Generate a Story",
-      desc: "Tell the AI what to write about.",
-      action: () => alert("Freeform AI flow — use 'Choose a Theme' for now."),
+      desc: "Describe your idea and let AI create the perfect adventure.",
+      action: () => go("aiBuilder"),      // NEW: Navigate to AI builder
       color: "rgba(59, 130, 246, 0.3)"
     },
     {
       id: "theme",
       icon: "🎨", 
       title: "Choose a Theme",
-      desc: "Pick from six magical worlds.",
+      desc: "Pick from six magical preset worlds and characters.",
       action: () => go("themeList"),
       color: "rgba(245, 158, 11, 0.3)"
     },
@@ -738,6 +922,194 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
       >
         ← Back
       </button>
+    </div>
+  )
+}
+
+// NEW: Manual story builder screen
+function ManualBuilderScreen({
+  title,
+  setTitle,
+  story,
+  setStory,
+  save,
+  go
+}: {
+  title: string
+  setTitle: (v: string) => void
+  story: string
+  setStory: (v: string) => void
+  save: () => void
+  go: (s: Screen) => void
+}) {
+  const canSave = title.trim() && story.trim()
+  
+  return (
+    <div className="flex flex-col items-center">
+      <TommyLogo size="small" className="mb-8" />
+      
+      <h1 className="text-4xl font-bold text-white mb-4">Write Your Own Story</h1>
+      <p className="text-lg text-white/90 mb-8 text-center max-w-2xl">
+        Create your own magical tale! We'll generate a beautiful cover image for your story.
+      </p>
+
+      <div className="w-full max-w-4xl space-y-6 mb-8">
+        <MagicalCard>
+          <label className="block text-lg font-semibold text-white mb-3">Story Title</label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter your story title..."
+            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none text-xl font-semibold"
+          />
+        </MagicalCard>
+
+        <MagicalCard>
+          <label className="block text-lg font-semibold text-white mb-3">Your Story</label>
+          <textarea
+            value={story}
+            onChange={(e) => setStory(e.target.value)}
+            placeholder="Write your magical story here..."
+            rows={15}
+            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none resize-none text-lg leading-relaxed"
+          />
+          <div className="mt-3 text-sm text-white/60">
+            📝 Tip: Write in simple language for children ages 4-10. Include exciting adventures and positive messages!
+          </div>
+        </MagicalCard>
+      </div>
+
+      <div className="flex gap-4">
+        <button
+          onClick={() => go("builder")}
+          className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
+        >
+          ← Back
+        </button>
+        <button
+          onClick={save}
+          disabled={!canSave}
+          className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold text-xl rounded-xl shadow-2xl transition-all duration-300 hover:shadow-3xl transform hover:scale-105 disabled:transform-none disabled:shadow-none"
+        >
+          📖 Save & Create Cover
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// NEW: AI story builder screen
+function AiBuilderScreen({
+  prompt,
+  setPrompt,
+  genre,
+  setGenre,
+  length,
+  setLength,
+  characters,
+  generate,
+  go
+}: {
+  prompt: string
+  setPrompt: (v: string) => void
+  genre: string
+  setGenre: (v: string) => void
+  length: string
+  setLength: (v: string) => void
+  characters: Character[]
+  generate: () => void
+  go: (s: Screen) => void
+}) {
+  const canGenerate = prompt.trim()
+  const namedChars = characters.filter(c => c.name.trim())
+  
+  return (
+    <div className="flex flex-col items-center">
+      <TommyLogo size="small" className="mb-8" />
+      
+      <h1 className="text-4xl font-bold text-white mb-4">AI Story Generator</h1>
+      <p className="text-lg text-white/90 mb-8 text-center max-w-2xl">
+        Describe your story idea and let AI create a magical adventure with a beautiful cover!
+      </p>
+
+      <div className="w-full max-w-4xl space-y-6 mb-8">
+        <MagicalCard>
+          <label className="block text-lg font-semibold text-white mb-3">What's your story about?</label>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="e.g. A brave mouse who wants to become a knight and save the kingdom from a grumpy dragon"
+            rows={4}
+            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-white/40 focus:outline-none resize-none text-lg"
+          />
+        </MagicalCard>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <MagicalCard>
+            <label className="block text-lg font-semibold text-white mb-3">Story Genre</label>
+            <select
+              value={genre}
+              onChange={(e) => setGenre(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:border-white/40 focus:outline-none text-lg"
+            >
+              <option value="adventure" className="bg-gray-800">Adventure</option>
+              <option value="fantasy" className="bg-gray-800">Fantasy</option>
+              <option value="friendship" className="bg-gray-800">Friendship</option>
+              <option value="mystery" className="bg-gray-800">Mystery</option>
+              <option value="comedy" className="bg-gray-800">Comedy</option>
+              <option value="educational" className="bg-gray-800">Educational</option>
+            </select>
+          </MagicalCard>
+
+          <MagicalCard>
+            <label className="block text-lg font-semibold text-white mb-3">Story Length</label>
+            <select
+              value={length}
+              onChange={(e) => setLength(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:border-white/40 focus:outline-none text-lg"
+            >
+              <option value="short" className="bg-gray-800">Short (3-4 paragraphs)</option>
+              <option value="medium" className="bg-gray-800">Medium (5-7 paragraphs)</option>
+              <option value="long" className="bg-gray-800">Long (8-12 paragraphs)</option>
+            </select>
+          </MagicalCard>
+        </div>
+
+        {namedChars.length > 0 && (
+          <MagicalCard glowColor="rgba(168, 85, 247, 0.3)">
+            <div className="text-lg font-semibold text-white mb-3">Available Characters</div>
+            <div className="flex flex-wrap gap-2">
+              {namedChars.map((c) => (
+                <span
+                  key={c.id}
+                  className="px-3 py-2 bg-purple-600/30 border border-purple-400/30 rounded-xl text-white text-sm"
+                >
+                  {c.name} {c.isGuest && "(Guest)"}
+                </span>
+              ))}
+            </div>
+            <div className="text-sm text-white/60 mt-2">
+              💡 AI will include these characters if they fit your story idea
+            </div>
+          </MagicalCard>
+        )}
+      </div>
+
+      <div className="flex gap-4">
+        <button
+          onClick={() => go("builder")}
+          className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
+        >
+          ← Back
+        </button>
+        <button
+          onClick={generate}
+          disabled={!canGenerate}
+          className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold text-xl rounded-xl shadow-2xl transition-all duration-300 hover:shadow-3xl transform hover:scale-105 disabled:transform-none disabled:shadow-none"
+        >
+          🤖 Generate Story
+        </button>
+      </div>
     </div>
   )
 }
@@ -786,7 +1158,7 @@ function ThemeListScreen({
   )
 }
 
-// ... [All other screen components remain exactly the same]
+// [Continue with existing screen components...]
 
 function PrepareScreen(props: {
   theme: ThemeId
@@ -1047,6 +1419,11 @@ function ReadingScreen({ story, go }: { story: SavedStory; go: (s: Screen) => vo
               <p key={i}>{p}</p>
             ))}
           </div>
+          {story.isManual && (
+            <div className="mt-8 p-4 bg-green-500/20 border border-green-400/30 rounded-xl text-center">
+              <span className="text-green-400 font-semibold">✍️ User-Written Story</span>
+            </div>
+          )}
         </div>
       </MagicalCard>
 
@@ -1110,9 +1487,14 @@ function LibraryScreen({
               <button onClick={() => open(s)} className="block w-full text-left">
                 <img src={s.coverUrl} alt={s.title} className="w-full aspect-square object-cover" />
                 <div className="p-6">
-                  <div className="font-bold text-white text-lg line-clamp-2 mb-2">{s.title}</div>
+                  <div className="font-bold text-white text-lg line-clamp-2 mb-2">
+                    {s.title}
+                    {s.isManual && <span className="text-xs text-green-400 ml-2">✍️</span>}
+                  </div>
                   <div className="text-sm text-white/60">
-                    {new Date(s.createdAt).toLocaleDateString()} · {THEME_LABEL[s.theme]}
+                    {new Date(s.createdAt).toLocaleDateString()} · {
+                      s.theme === "custom" ? "Custom" : THEME_LABEL[s.theme as ThemeId]
+                    }
                   </div>
                 </div>
               </button>
