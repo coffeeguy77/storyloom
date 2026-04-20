@@ -54,7 +54,7 @@ const THEME_NAMES: Record<ThemeType, string> = {
   "monster-trucks": "Monster Trucks Theme"
 }
 
-export default function StoryLoomClean() {
+export default function StoryLoomFinal() {
   const [currentStep, setCurrentStep] = useState<"start" | "characters" | "story-builder" | "ai-generator" | "build-own" | "reading" | "library">("start")
   const [savedCharacters, setSavedCharacters] = useState<Character[]>([])
   const [activeCharacters, setActiveCharacters] = useState<Character[]>([])
@@ -64,7 +64,7 @@ export default function StoryLoomClean() {
   const [logoError, setLogoError] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<string>("")
-  const [showThemeDropdown, setShowThemeDropdown] = useState(false)
+  const [showThemes, setShowThemes] = useState(false)
 
   // Tommy's magical story prompts by theme
   const storyPromptsByTheme: Record<ThemeType, string[]> = {
@@ -183,11 +183,11 @@ export default function StoryLoomClean() {
 
   const goToThemeGenerator = (theme: ThemeType) => {
     setSelectedTheme(theme)
-    setShowThemeDropdown(false)
+    setShowThemes(false)
     setCurrentStep("ai-generator")
   }
 
-  // HOMEPAGE - Clean with large logo
+  // HOMEPAGE - Seamless logo without box
   if (currentStep === "start") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 relative overflow-hidden">
@@ -205,25 +205,23 @@ export default function StoryLoomClean() {
           <div className="absolute bottom-60 right-1/3 text-orange-300 text-3xl animate-pulse" style={{ animationDelay: '2.5s' }}>🌈</div>
         </div>
 
-        {/* LARGE TOMMY LOGO - Double size, no decorations */}
+        {/* SEAMLESS TOMMY LOGO - No background box */}
         <div className="flex flex-col items-center pt-16 pb-12 relative z-10">
-          <div className="relative">
-            <img
-              src={TOMMY_LOGO_URL}
-              alt="StoryLoom - Tommy's Magical World"
-              className="w-[768px] h-[512px] object-contain rounded-3xl shadow-2xl"
-              onError={() => setLogoError(true)}
-            />
-            
-            {/* Simple fallback logo */}
-            {logoError && (
-              <div className="w-[768px] h-[512px] bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-white">
-                <div className="text-[120px] mb-8">🌈</div>
-                <h1 className="text-8xl font-bold text-center mb-6">StoryLoom</h1>
-                <p className="text-3xl font-medium">Tommy&apos;s Magical World</p>
-              </div>
-            )}
-          </div>
+          <img
+            src={TOMMY_LOGO_URL}
+            alt="StoryLoom - Tommy's Magical World"
+            className="w-[768px] h-[512px] object-contain"
+            onError={() => setLogoError(true)}
+          />
+          
+          {/* Simple fallback logo without box */}
+          {logoError && (
+            <div className="w-[768px] h-[512px] bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-3xl flex flex-col items-center justify-center text-white">
+              <div className="text-[120px] mb-8">🌈</div>
+              <h1 className="text-8xl font-bold text-center mb-6">StoryLoom</h1>
+              <p className="text-3xl font-medium">Tommy&apos;s Magical World</p>
+            </div>
+          )}
         </div>
 
         {/* Progress indicator */}
@@ -272,16 +270,16 @@ export default function StoryLoomClean() {
     )
   }
 
-  // CHARACTER MANAGEMENT - Same size logo as homepage, no box
+  // CHARACTER MANAGEMENT - Same large seamless logo
   if (currentStep === "characters") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
-        {/* Large Header Logo - Same size as homepage */}
+        {/* Same large seamless logo as homepage */}
         <div className="flex items-center justify-center mb-8">
           <img
             src={TOMMY_LOGO_URL}
             alt="StoryLoom"
-            className="w-[384px] h-[256px] object-contain rounded-2xl shadow-2xl"
+            className="w-[768px] h-[512px] object-contain"
             onError={() => setLogoError(true)}
           />
         </div>
@@ -378,7 +376,7 @@ export default function StoryLoomClean() {
     )
   }
 
-  // STORY BUILDER - 3 options
+  // STORY BUILDER - Updated theme display
   if (currentStep === "story-builder") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 py-8">
@@ -387,7 +385,7 @@ export default function StoryLoomClean() {
           <img
             src={TOMMY_LOGO_URL}
             alt="StoryLoom"
-            className="w-[384px] h-[256px] object-contain rounded-2xl shadow-2xl"
+            className="w-[384px] h-[256px] object-contain"
             onError={() => setLogoError(true)}
           />
         </div>
@@ -403,7 +401,7 @@ export default function StoryLoomClean() {
             </button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             {/* Build Your Own Story */}
             <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border-2 border-white/30 hover:scale-105 transition-all">
               <div className="text-center">
@@ -435,44 +433,48 @@ export default function StoryLoomClean() {
             </div>
 
             {/* Choose from a Theme */}
-            <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border-2 border-white/30 hover:scale-105 transition-all relative">
+            <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border-2 border-white/30 hover:scale-105 transition-all">
               <div className="text-center">
                 <div className="text-6xl mb-4">🎨</div>
                 <h3 className="text-2xl font-bold text-white mb-4">Choose from a Theme</h3>
                 <p className="text-white/90 mb-6">Pick a magical theme and create themed adventures</p>
                 <button
-                  onClick={() => setShowThemeDropdown(!showThemeDropdown)}
+                  onClick={() => setShowThemes(!showThemes)}
                   className="bg-gradient-to-r from-yellow-400 to-orange-400 text-purple-900 px-8 py-4 rounded-xl font-bold text-lg transition-all hover:scale-105 w-full"
                 >
-                  Choose Theme ▼
+                  Choose Theme
                 </button>
-
-                {/* Theme Dropdown */}
-                {showThemeDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-4 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border-2 border-white/40 z-50">
-                    <div className="p-4 space-y-3">
-                      {Object.entries(THEME_IMAGES).map(([theme, imageUrl]) => (
-                        <button
-                          key={theme}
-                          onClick={() => goToThemeGenerator(theme as ThemeType)}
-                          className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-purple-100 transition-all"
-                        >
-                          <img 
-                            src={imageUrl}
-                            alt={theme}
-                            className="w-16 h-16 object-cover rounded-lg"
-                          />
-                          <span className="text-purple-900 font-bold text-lg">
-                            {THEME_NAMES[theme as ThemeType]}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
+
+          {/* Themes Display - Shows below when clicked */}
+          {showThemes && (
+            <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border-2 border-white/30">
+              <h2 className="text-4xl font-bold text-white mb-8 text-center">Themes</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {Object.entries(THEME_IMAGES).map(([theme, imageUrl]) => (
+                  <div
+                    key={theme}
+                    onClick={() => goToThemeGenerator(theme as ThemeType)}
+                    className="group cursor-pointer bg-white/20 rounded-3xl p-6 hover:scale-105 transition-all hover:bg-white/30"
+                  >
+                    <div className="text-center">
+                      <img 
+                        src={imageUrl}
+                        alt={theme}
+                        className="w-[384px] h-[256px] object-cover rounded-2xl mx-auto mb-4 shadow-2xl"
+                      />
+                      <h3 className="text-2xl font-bold text-white group-hover:text-yellow-200 transition-colors">
+                        {THEME_NAMES[theme as ThemeType]}
+                      </h3>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -487,7 +489,7 @@ export default function StoryLoomClean() {
           <img
             src={TOMMY_LOGO_URL}
             alt="StoryLoom"
-            className="w-[384px] h-[256px] object-contain rounded-2xl shadow-2xl"
+            className="w-[384px] h-[256px] object-contain"
             onError={() => setLogoError(true)}
           />
         </div>
