@@ -302,7 +302,7 @@ function MagicalCard({
   return (
     <div 
       className={`
-        relative bg-white/10 backdrop-blur-md rounded-3xl p-4 
+        relative bg-white/10 backdrop-blur-md rounded-3xl py-1 px-2 
         border border-white/20 shadow-2xl hover:shadow-3xl
         transition-all duration-500 ease-out
         hover:transform hover:scale-105 hover:-translate-y-2
@@ -797,48 +797,48 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
         <MagicalCard
           onClick={() => go("characters")}
-          className="text-center py-6 px-4"
+          className="text-center"
           glowColor="rgba(255, 107, 107, 0.2)"
         >
           <div className="flex justify-center">
             <TommyIcon iconKey="addFamily" alt="Add Your Family" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
+          <h3 className="text-xl font-bold text-white mb-1 drop-shadow-lg">
             Add Your Family
           </h3>
-          <p className="text-white/80 text-lg">
+          <p className="text-white/80 text-sm leading-tight px-1">
             Create profiles for your children and family members to include them in magical stories
           </p>
         </MagicalCard>
 
         <MagicalCard
           onClick={() => go("builder")}
-          className="text-center py-6 px-4"
+          className="text-center"
           glowColor="rgba(78, 205, 196, 0.2)"
         >
           <div className="flex justify-center">
             <TommyIcon iconKey="createStories" alt="Create Stories" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
+          <h3 className="text-xl font-bold text-white mb-1 drop-shadow-lg">
             Create Stories
           </h3>
-          <p className="text-white/80 text-lg">
+          <p className="text-white/80 text-sm leading-tight px-1">
             Choose from themes, write your own, or let AI create personalized adventures
           </p>
         </MagicalCard>
 
         <MagicalCard
           onClick={() => go("library")}
-          className="text-center py-6 px-4"
+          className="text-center"
           glowColor="rgba(199, 125, 255, 0.2)"
         >
           <div className="flex justify-center">
             <TommyIcon iconKey="storyLibrary" alt="Story Library" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
+          <h3 className="text-xl font-bold text-white mb-1 drop-shadow-lg">
             Story Library
           </h3>
-          <p className="text-white/80 text-lg">
+          <p className="text-white/80 text-sm leading-tight px-1">
             Browse and read all your saved stories with beautiful cover art
           </p>
         </MagicalCard>
@@ -979,48 +979,48 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
         <MagicalCard 
           onClick={() => go("manualBuilder")}
-          className="text-center py-6 px-4"
+          className="text-center"
           glowColor="rgba(255, 195, 113, 0.2)"
         >
           <div className="flex justify-center">
             <TommyIcon iconKey="buildStory" alt="Build Your Own Story" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
+          <h3 className="text-xl font-bold text-white mb-1 drop-shadow-lg">
             Build Your Own Story
           </h3>
-          <p className="text-white/80 text-lg">
+          <p className="text-white/80 text-sm leading-tight px-1">
             Write your own magical tale and we'll create a beautiful cover image
           </p>
         </MagicalCard>
 
         <MagicalCard 
           onClick={() => go("aiBuilder")}
-          className="text-center py-6 px-4"
+          className="text-center"
           glowColor="rgba(135, 206, 250, 0.2)"
         >
           <div className="flex justify-center">
             <TommyIcon iconKey="aiGenerate" alt="AI Generate a Story" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
+          <h3 className="text-xl font-bold text-white mb-1 drop-shadow-lg">
             AI Generate a Story
           </h3>
-          <p className="text-white/80 text-lg">
+          <p className="text-white/80 text-sm leading-tight px-1">
             Describe any story idea and our AI will create a complete tale for you
           </p>
         </MagicalCard>
 
         <MagicalCard 
           onClick={() => go("themeList")}
-          className="text-center py-6 px-4"
+          className="text-center"
           glowColor="rgba(255, 107, 107, 0.2)"
         >
           <div className="flex justify-center">
             <TommyIcon iconKey="chooseTheme" alt="Choose from a Theme" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
+          <h3 className="text-xl font-bold text-white mb-1 drop-shadow-lg">
             Choose from a Theme
           </h3>
-          <p className="text-white/80 text-lg">
+          <p className="text-white/80 text-sm leading-tight px-1">
             Pick a magical theme and we'll create a personalized story with your characters
           </p>
         </MagicalCard>
