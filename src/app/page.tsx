@@ -205,21 +205,30 @@ function AnimatedBackground() {
 
 function TommyHeaderLogo({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex justify-center mb-8 ${className}`}>
-      <img
-        src={CLOUDINARY.tommyLogo}
-        alt="StoryLoom — Tommy's magical stories"
-        className="w-full max-w-[500px] h-auto drop-shadow-2xl filter brightness-125 relative z-50 opacity-100"
-        style={{ imageRendering: 'auto', opacity: 1 }}
-        onError={(e) => {
-          console.error('Tommy header logo failed to load:', e);
-          const target = e.target as HTMLImageElement;
-          if (target.src !== CLOUDINARY.tommyLogo) {
-            target.src = CLOUDINARY.tommyLogo;
-          }
-        }}
-        onLoad={() => console.log('Tommy header logo loaded successfully')}
-      />
+    <div className={`flex justify-center mb-8 relative z-50 ${className}`} style={{ zIndex: 9999 }}>
+      <div className="relative" style={{ zIndex: 9999, opacity: 1 }}>
+        <img
+          src={CLOUDINARY.tommyLogo}
+          alt="StoryLoom — Tommy's magical stories"
+          className="w-full max-w-[500px] h-auto relative"
+          style={{ 
+            imageRendering: 'auto', 
+            opacity: 1,
+            zIndex: 9999,
+            filter: 'none',
+            background: 'none',
+            mixBlendMode: 'normal'
+          }}
+          onError={(e) => {
+            console.error('Tommy header logo failed to load:', e);
+            const target = e.target as HTMLImageElement;
+            if (target.src !== CLOUDINARY.tommyLogo) {
+              target.src = CLOUDINARY.tommyLogo;
+            }
+          }}
+          onLoad={() => console.log('Tommy header logo loaded successfully')}
+        />
+      </div>
     </div>
   )
 }
@@ -232,21 +241,30 @@ function TommyLogo({ size = "large", className = "" }: { size?: "large" | "mediu
   }
   
   return (
-    <div className={`flex justify-center ${className}`}>
-      <img
-        src={CLOUDINARY.tommyLogo}
-        alt="StoryLoom — Tommy's magical stories"
-        className={`${sizeClasses[size]} drop-shadow-2xl filter brightness-125 relative z-50 opacity-100`}
-        style={{ imageRendering: 'auto', opacity: 1 }}
-        onError={(e) => {
-          console.error('Tommy main logo failed to load:', e);
-          const target = e.target as HTMLImageElement;
-          if (target.src !== CLOUDINARY.tommyLogo) {
-            target.src = CLOUDINARY.tommyLogo;
-          }
-        }}
-        onLoad={() => console.log('Tommy main logo loaded successfully')}
-      />
+    <div className={`flex justify-center relative z-50 ${className}`} style={{ zIndex: 9999 }}>
+      <div className="relative" style={{ zIndex: 9999, opacity: 1 }}>
+        <img
+          src={CLOUDINARY.tommyLogo}
+          alt="StoryLoom — Tommy's magical stories"
+          className={`${sizeClasses[size]} relative`}
+          style={{ 
+            imageRendering: 'auto', 
+            opacity: 1,
+            zIndex: 9999,
+            filter: 'none',
+            background: 'none',
+            mixBlendMode: 'normal'
+          }}
+          onError={(e) => {
+            console.error('Tommy main logo failed to load:', e);
+            const target = e.target as HTMLImageElement;
+            if (target.src !== CLOUDINARY.tommyLogo) {
+              target.src = CLOUDINARY.tommyLogo;
+            }
+          }}
+          onLoad={() => console.log('Tommy main logo loaded successfully')}
+        />
+      </div>
     </div>
   )
 }
@@ -797,16 +815,18 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
         <MagicalCard
           onClick={() => go("characters")}
-          className="text-center"
+          className="text-center overflow-hidden"
           glowColor="rgba(255, 107, 107, 0.2)"
         >
-          <div className="pt-2">
-            <TommyIcon iconKey="addFamily" alt="Add Your Family" />
-            <div className="-mt-8 px-3 pb-3">
-              <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
+          <div className="relative">
+            <div className="pt-1">
+              <TommyIcon iconKey="addFamily" alt="Add Your Family" />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
+              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
                 Add Your Family
               </h3>
-              <p className="text-white/80 text-base leading-snug">
+              <p className="text-white/90 text-sm leading-snug">
                 Create profiles for your children and family members to include them in magical stories
               </p>
             </div>
@@ -815,16 +835,18 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
 
         <MagicalCard
           onClick={() => go("builder")}
-          className="text-center"
+          className="text-center overflow-hidden"
           glowColor="rgba(78, 205, 196, 0.2)"
         >
-          <div className="pt-2">
-            <TommyIcon iconKey="createStories" alt="Create Stories" />
-            <div className="-mt-8 px-3 pb-3">
-              <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
+          <div className="relative">
+            <div className="pt-1">
+              <TommyIcon iconKey="createStories" alt="Create Stories" />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
+              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
                 Create Stories
               </h3>
-              <p className="text-white/80 text-base leading-snug">
+              <p className="text-white/90 text-sm leading-snug">
                 Choose from themes, write your own, or let AI create personalized adventures
               </p>
             </div>
@@ -833,16 +855,18 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
 
         <MagicalCard
           onClick={() => go("library")}
-          className="text-center"
+          className="text-center overflow-hidden"
           glowColor="rgba(199, 125, 255, 0.2)"
         >
-          <div className="pt-2">
-            <TommyIcon iconKey="storyLibrary" alt="Story Library" />
-            <div className="-mt-8 px-3 pb-3">
-              <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
+          <div className="relative">
+            <div className="pt-1">
+              <TommyIcon iconKey="storyLibrary" alt="Story Library" />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
+              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
                 Story Library
               </h3>
-              <p className="text-white/80 text-base leading-snug">
+              <p className="text-white/90 text-sm leading-snug">
                 Browse and read all your saved stories with beautiful cover art
               </p>
             </div>
@@ -985,16 +1009,18 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
         <MagicalCard 
           onClick={() => go("manualBuilder")}
-          className="text-center"
+          className="text-center overflow-hidden"
           glowColor="rgba(255, 195, 113, 0.2)"
         >
-          <div className="pt-2">
-            <TommyIcon iconKey="buildStory" alt="Build Your Own Story" />
-            <div className="-mt-8 px-3 pb-3">
-              <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
+          <div className="relative">
+            <div className="pt-1">
+              <TommyIcon iconKey="buildStory" alt="Build Your Own Story" />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
+              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
                 Build Your Own Story
               </h3>
-              <p className="text-white/80 text-base leading-snug">
+              <p className="text-white/90 text-sm leading-snug">
                 Write your own magical tale and we'll create a beautiful cover image
               </p>
             </div>
@@ -1003,16 +1029,18 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
 
         <MagicalCard 
           onClick={() => go("aiBuilder")}
-          className="text-center"
+          className="text-center overflow-hidden"
           glowColor="rgba(135, 206, 250, 0.2)"
         >
-          <div className="pt-2">
-            <TommyIcon iconKey="aiGenerate" alt="AI Generate a Story" />
-            <div className="-mt-8 px-3 pb-3">
-              <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
+          <div className="relative">
+            <div className="pt-1">
+              <TommyIcon iconKey="aiGenerate" alt="AI Generate a Story" />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
+              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
                 AI Generate a Story
               </h3>
-              <p className="text-white/80 text-base leading-snug">
+              <p className="text-white/90 text-sm leading-snug">
                 Describe any story idea and our AI will create a complete tale for you
               </p>
             </div>
@@ -1021,16 +1049,18 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
 
         <MagicalCard 
           onClick={() => go("themeList")}
-          className="text-center"
+          className="text-center overflow-hidden"
           glowColor="rgba(255, 107, 107, 0.2)"
         >
-          <div className="pt-2">
-            <TommyIcon iconKey="chooseTheme" alt="Choose from a Theme" />
-            <div className="-mt-8 px-3 pb-3">
-              <h3 className="text-xl font-bold text-white mb-2 drop-shadow-lg">
+          <div className="relative">
+            <div className="pt-1">
+              <TommyIcon iconKey="chooseTheme" alt="Choose from a Theme" />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent p-4 pt-8">
+              <h3 className="text-lg font-bold text-white mb-1 drop-shadow-lg">
                 Choose from a Theme
               </h3>
-              <p className="text-white/80 text-base leading-snug">
+              <p className="text-white/90 text-sm leading-snug">
                 Pick a magical theme and we'll create a personalized story with your characters
               </p>
             </div>
