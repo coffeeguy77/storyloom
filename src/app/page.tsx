@@ -1,10 +1,10 @@
 "use client"
 
 // src/app/page.tsx
-// StoryLoom — Tommy's Logo at Top of All Pages (except theme choice pages)
+// StoryLoom — FIXED: Using regular img tags instead of Next.js Image optimization
+// This resolves the Tommy logo loading issue
 
 import { useEffect, useMemo, useState } from "react"
-import Image from "next/image"
 import {
   buildImagePrompt,
   type ThemeId,
@@ -191,27 +191,30 @@ function AnimatedBackground() {
 }
 
 // ===================================================================
-// TOMMY LOGO COMPONENT - USED AT TOP OF ALL PAGES EXCEPT THEME PAGES
+// FIXED TOMMY LOGO COMPONENTS - Using regular img tags instead of Next.js Image
 // ===================================================================
 
 function TommyHeaderLogo({ className = "" }: { className?: string }) {
   return (
     <div className={`flex justify-center mb-8 ${className}`}>
-      <Image
+      <img
         src={CLOUDINARY.tommyLogo}
         alt="StoryLoom — Tommy's magical stories"
-        width={1536}
-        height={1024}
-        priority
         className="w-full max-w-[400px] h-auto drop-shadow-2xl filter brightness-110"
+        style={{ imageRendering: 'auto' }}
+        onError={(e) => {
+          console.error('Tommy header logo failed to load:', e);
+          // Fallback to direct URL if needed
+          const target = e.target as HTMLImageElement;
+          if (target.src !== CLOUDINARY.tommyLogo) {
+            target.src = CLOUDINARY.tommyLogo;
+          }
+        }}
+        onLoad={() => console.log('Tommy header logo loaded successfully')}
       />
     </div>
   )
 }
-
-// ===================================================================
-// LARGE TOMMY LOGO FOR HOME PAGE
-// ===================================================================
 
 function TommyLogo({ size = "large", className = "" }: { size?: "large" | "medium" | "small", className?: string }) {
   const sizeClasses = {
@@ -222,13 +225,20 @@ function TommyLogo({ size = "large", className = "" }: { size?: "large" | "mediu
   
   return (
     <div className={`flex justify-center ${className}`}>
-      <Image
+      <img
         src={CLOUDINARY.tommyLogo}
         alt="StoryLoom — Tommy's magical stories"
-        width={1536}
-        height={1024}
-        priority
         className={`${sizeClasses[size]} drop-shadow-2xl filter brightness-110`}
+        style={{ imageRendering: 'auto' }}
+        onError={(e) => {
+          console.error('Tommy main logo failed to load:', e);
+          // Fallback to direct URL if needed
+          const target = e.target as HTMLImageElement;
+          if (target.src !== CLOUDINARY.tommyLogo) {
+            target.src = CLOUDINARY.tommyLogo;
+          }
+        }}
+        onLoad={() => console.log('Tommy main logo loaded successfully')}
       />
     </div>
   )
