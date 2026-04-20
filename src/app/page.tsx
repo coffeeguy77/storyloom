@@ -1,8 +1,8 @@
 "use client"
 
 // src/app/page.tsx
-// StoryLoom — FIXED: Using regular img tags instead of Next.js Image optimization
-// This resolves the Tommy logo loading issue
+// StoryLoom — WITH CUSTOM TOMMY ICONS
+// Replaced all stock emojis with beautiful Tommy-themed Cloudinary images
 
 import { useEffect, useMemo, useState } from "react"
 import {
@@ -23,6 +23,15 @@ const CLOUDINARY = {
     pirate: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662161/pirate.png",
     "monster-trucks": "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662021/monster-trucks.png",
   } satisfies Record<ThemeId, string>,
+  // NEW: Custom Tommy-themed icons
+  icons: {
+    chooseTheme: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688052/tommy-theme.png",
+    aiGenerate: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688049/tommy-ai.png", 
+    buildStory: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688046/tommy-write.png",
+    addFamily: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688045/my-kids.png",
+    createStories: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688046/tommy-dream.png",
+    storyLibrary: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688047/tommy-read.png"
+  }
 } as const
 
 const THEME_ORDER: ThemeId[] = [
@@ -191,7 +200,7 @@ function AnimatedBackground() {
 }
 
 // ===================================================================
-// FIXED TOMMY LOGO COMPONENTS - Using regular img tags instead of Next.js Image
+// TOMMY LOGO COMPONENTS - Using regular img tags
 // ===================================================================
 
 function TommyHeaderLogo({ className = "" }: { className?: string }) {
@@ -241,6 +250,33 @@ function TommyLogo({ size = "large", className = "" }: { size?: "large" | "mediu
         onLoad={() => console.log('Tommy main logo loaded successfully')}
       />
     </div>
+  )
+}
+
+// ===================================================================
+// NEW: CUSTOM TOMMY ICON COMPONENT
+// ===================================================================
+
+function TommyIcon({ 
+  iconKey, 
+  alt, 
+  className = "" 
+}: { 
+  iconKey: keyof typeof CLOUDINARY.icons
+  alt: string
+  className?: string 
+}) {
+  return (
+    <img
+      src={CLOUDINARY.icons[iconKey]}
+      alt={alt}
+      className={`w-16 h-16 object-contain drop-shadow-lg filter brightness-110 ${className}`}
+      style={{ imageRendering: 'auto' }}
+      onError={(e) => {
+        console.error(`Tommy icon ${iconKey} failed to load:`, e);
+      }}
+      onLoad={() => console.log(`Tommy icon ${iconKey} loaded successfully`)}
+    />
   )
 }
 
@@ -607,7 +643,7 @@ export default function StoryLoomPage() {
         }),
       })
       if (!imgRes.ok) {
-        const detail = await imgRes.text().catch(() => "")
+        const detail = await storyRes.text().catch(() => "")
         throw new Error(`Cover generation failed: ${detail || imgRes.status}`)
       }
       const { url: coverUrl }: { url: string } = await imgRes.json()
@@ -738,7 +774,7 @@ export default function StoryLoomPage() {
 }
 
 // ===================================================================
-// SCREENS
+// SCREENS WITH CUSTOM TOMMY ICONS
 // ===================================================================
 
 function HomeScreen({ go }: { go: (s: Screen) => void }) {
@@ -757,7 +793,10 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
         <MagicalCard glowColor="rgba(168, 85, 247, 0.3)">
           <div className="text-center">
-            <div className="text-6xl mb-4">👨‍👩‍👧‍👦</div>
+            {/* CUSTOM ICON: Add Your Family */}
+            <div className="flex justify-center mb-6">
+              <TommyIcon iconKey="addFamily" alt="Add Your Family" />
+            </div>
             <h3 className="text-2xl font-bold text-white mb-3">Add Your Family</h3>
             <p className="text-white/80 mb-6">Create characters inspired by your loved ones</p>
             <button
@@ -771,7 +810,10 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
 
         <MagicalCard glowColor="rgba(236, 72, 153, 0.3)">
           <div className="text-center">
-            <div className="text-6xl mb-4">✨</div>
+            {/* CUSTOM ICON: Create Stories */}
+            <div className="flex justify-center mb-6">
+              <TommyIcon iconKey="createStories" alt="Create Stories" />
+            </div>
             <h3 className="text-2xl font-bold text-white mb-3">Create Stories</h3>
             <p className="text-white/80 mb-6">Choose themes and generate magical adventures</p>
             <button
@@ -785,7 +827,10 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
 
         <MagicalCard glowColor="rgba(59, 130, 246, 0.3)">
           <div className="text-center">
-            <div className="text-6xl mb-4">📚</div>
+            {/* CUSTOM ICON: Story Library */}
+            <div className="flex justify-center mb-6">
+              <TommyIcon iconKey="storyLibrary" alt="Story Library" />
+            </div>
             <h3 className="text-2xl font-bold text-white mb-3">Story Library</h3>
             <p className="text-white/80 mb-6">Revisit your magical collection</p>
             <button
@@ -903,7 +948,7 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
   const options = [
     {
       id: "own",
-      icon: "✍️",
+      iconKey: "buildStory" as const,
       title: "Build Your Own Story",
       desc: "Write your own magical tale with a custom AI-generated cover.",
       action: () => go("manualBuilder"),
@@ -911,7 +956,7 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
     },
     {
       id: "ai", 
-      icon: "🤖",
+      iconKey: "aiGenerate" as const,
       title: "AI Generate a Story",
       desc: "Describe your idea and let AI create the perfect adventure.",
       action: () => go("aiBuilder"),
@@ -919,7 +964,7 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
     },
     {
       id: "theme",
-      icon: "🎨", 
+      iconKey: "chooseTheme" as const,
       title: "Choose a Theme",
       desc: "Pick from six magical preset worlds and characters.",
       action: () => go("themeList"),
@@ -941,7 +986,10 @@ function BuilderScreen({ go }: { go: (s: Screen) => void }) {
               onClick={o.action}
               className="text-center w-full h-full"
             >
-              <div className="text-6xl mb-6">{o.icon}</div>
+              {/* CUSTOM TOMMY ICONS */}
+              <div className="flex justify-center mb-6">
+                <TommyIcon iconKey={o.iconKey} alt={o.title} />
+              </div>
               <div className="text-2xl font-bold text-white mb-3">{o.title}</div>
               <div className="text-white/80 leading-relaxed">{o.desc}</div>
             </button>
@@ -1503,7 +1551,9 @@ function LibraryScreen({
 
       {stories.length === 0 ? (
         <MagicalCard className="text-center">
-          <div className="text-6xl mb-6">📚</div>
+          <div className="flex justify-center mb-6">
+            <TommyIcon iconKey="storyLibrary" alt="Empty Library" />
+          </div>
           <p className="text-xl text-white/70 italic mb-6">No stories yet — let's create your first magical adventure!</p>
           <button
             onClick={() => go("builder")}
