@@ -1,8 +1,7 @@
 // src/app/api/generate-image/route.ts
 //
-// Generates an image with DALL-E 3 standard, downloads the bytes while the
-// OpenAI URL is still valid, and uploads them to Cloudinary for permanent
-// storage. Returns the permanent Cloudinary URL.
+// Generates an image with DALL-E 3 standard, uploads to Cloudinary for
+// permanent storage, returns the permanent Cloudinary URL.
 //
 // Accepts: { prompt: string, size?: "1024x1024" | "1792x1024" | "1024x1792" }
 // Returns: { imageUrl: string }
@@ -14,7 +13,7 @@
 //   CLOUDINARY_API_SECRET
 
 import { NextRequest, NextResponse } from "next/server"
-import crypto from "node:crypto"
+import { uploadToCloudinary } from "@/lib/cloudinary"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -57,7 +56,6 @@ export async function POST(req: NextRequest) {
     body?.size === "1792x1024" || body?.size === "1024x1792" ? body.size : "1024x1024"
 
   try {
-    // ---- 1. Generate via DALL-E 3 --------------------------------------------
     const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
@@ -90,9 +88,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "OpenAI returned no image URL" }, { status: 502 })
     }
 
-    // ---- 2. Upload to Cloudinary --------------------------------------------
-    // We upload via the URL directly — Cloudinary fetches from OpenAI's
-    // expiring URL while it's still valid and stores the result permanently.
     const permanentUrl = await uploadToCloudinary({
       sourceUrl: tempUrl,
       cloudName,
@@ -109,51 +104,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-// -----------------------------------------------------------------------------
-// Signed upload helper
-// -----------------------------------------------------------------------------
-export async function uploadToCloudinary(opts: {
-  sourceUrl: string
-  cloudName: string
-  apiKey: string
-  apiSecret: string
-  folder?: string
-}): Promise<string> {
-  const timestamp = Math.floor(Date.now() / 1000)
-  const folder = opts.folder ?? "storyloom/covers"
-
-  // Cloudinary signature: SHA-1 of params sorted alphabetically, joined with &,
-  // then appended with the api_secret. See:
-  //   https://cloudinary.com/documentation/signatures
-  const params: Record<string, string> = {
-    folder,
-    timestamp: String(timestamp),
-  }
-  const sigString =
-    Object.keys(params).sort().map((k) => `${k}=${params[k]}`).join("&") + opts.apiSecret
-  const signature = crypto.createHash("sha1").update(sigString).digest("hex")
-
-  const form = new FormData()
-  form.append("file", opts.sourceUrl)         // Cloudinary fetches this URL
-  form.append("api_key", opts.apiKey)
-  form.append("timestamp", String(timestamp))
-  form.append("folder", folder)
-  form.append("signature", signature)
-
-  const uploadUrl = `https://api.cloudinary.com/v1_1/${opts.cloudName}/image/upload`
-  const uploadRes = await fetch(uploadUrl, { method: "POST", body: form })
-
-  if (!uploadRes.ok) {
-    const errText = await uploadRes.text()
-    throw new Error(`Cloudinary upload failed: ${uploadRes.status} ${errText.slice(0, 300)}`)
-  }
-
-  const uploadData = await uploadRes.json()
-  const secureUrl: string | undefined = uploadData?.secure_url
-  if (!secureUrl) {
-    throw new Error("Cloudinary upload returned no secure_url")
-  }
-  return secureUrl
 }
