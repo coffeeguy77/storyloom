@@ -1,146 +1,94 @@
-// src/app/api/generate-image/route.ts
-// Server-side: calls OpenAI DALL-E 3, uploads the result to Cloudinary, returns the Cloudinary URL.
-//
-// Env vars required in Vercel:
-//   OPENAI_API_KEY
-//   CLOUDINARY_CLOUD_NAME        (e.g. "dzx6x1hou")
-//   CLOUDINARY_API_KEY           (e.g. "228818781471743")
-//   CLOUDINARY_API_SECRET        (the matching secret for the Storyloom key)
+import { NextRequest, NextResponse } from 'next/server'
+import OpenAI from 'openai'
 
-import { NextRequest, NextResponse } from "next/server"
-import crypto from "crypto"
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
-export const runtime = "nodejs"
-export const maxDuration = 60 // DALL-E 3 typically 10-20s; 60s is comfortable headroom
-
-type Body = {
-  prompt: string
-  theme?: string
-  storyTitle?: string
-  quality?: "standard" | "hd"
-  size?: "1024x1024" | "1024x1792" | "1792x1024"
-  style?: "vivid" | "natural"
-}
-
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const body = (await req.json()) as Body
-    const { prompt, theme = "general", storyTitle = "storyloom-cover" } = body
-    const quality = body.quality ?? "standard" // ~$0.04 at 1024x1024 — matches what was working yesterday
-    const size = body.size ?? "1024x1024"       // square, cheapest tier, good children's book look
-    const style = body.style ?? "vivid"         // saturated, children's-book friendly
-
-    if (!prompt || prompt.trim().length < 10) {
-      return NextResponse.json({ error: "Prompt too short" }, { status: 400 })
-    }
-
-    const openaiKey = process.env.OPENAI_API_KEY
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME
-    const cloudKey = process.env.CLOUDINARY_API_KEY
-    const cloudSecret = process.env.CLOUDINARY_API_SECRET
-
-    if (!openaiKey) return NextResponse.json({ error: "OPENAI_API_KEY not set" }, { status: 500 })
-    if (!cloudName || !cloudKey || !cloudSecret) {
-      return NextResponse.json({ error: "Cloudinary env vars missing" }, { status: 500 })
-    }
-
-    // ---------- 1. Call DALL-E 3 ----------
-    const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiKey}`,
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt,
-        n: 1,              // DALL-E 3 only supports n=1
-        size,
-        quality,
-        style,
-        response_format: "url", // 60-minute signed URL
-      }),
-    })
-
-    if (!openaiRes.ok) {
-      const errText = await openaiRes.text()
-      console.error("OpenAI error:", errText)
+    if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        { error: "OpenAI image generation failed", detail: errText },
-        { status: 502 }
+        { error: 'OpenAI API key not configured' },
+        { status: 500 }
       )
     }
 
-    const openaiJson = await openaiRes.json()
-    const tempUrl: string | undefined = openaiJson?.data?.[0]?.url
-    const revisedPrompt: string | undefined = openaiJson?.data?.[0]?.revised_prompt
-    if (!tempUrl) {
-      return NextResponse.json({ error: "No image returned from OpenAI" }, { status: 502 })
+    const body = await request.json()
+    const { prompt } = body
+
+    if (!prompt || typeof prompt !== 'string') {
+      return NextResponse.json(
+        { error: 'Missing or invalid prompt' },
+        { status: 400 }
+      )
     }
 
-    // ---------- 2. Upload to Cloudinary (Cloudinary fetches the URL directly) ----------
-    const timestamp = Math.floor(Date.now() / 1000)
-    const safeTitle = storyTitle
-      .toLowerCase()
-      .replace(/[^a-z0-9-]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 60) || "cover"
-    const publicId = `${safeTitle}-${timestamp}`
-    const folder = "storyloom/book-covers"
+    console.log('Generating image with DALL-E 3...')
 
-    // Cloudinary signature: sha1 of alphabetically-sorted params + api_secret
-    const paramsToSign: Record<string, string> = {
-      folder,
-      public_id: publicId,
-      timestamp: String(timestamp),
-    }
-    const toSign = Object.keys(paramsToSign)
-      .sort()
-      .map((k) => `${k}=${paramsToSign[k]}`)
-      .join("&")
-    const signature = crypto
-      .createHash("sha1")
-      .update(toSign + cloudSecret)
-      .digest("hex")
+    // Enhanced prompt for children's book cover quality
+    const enhancedPrompt = `${prompt}
 
-    const form = new FormData()
-    form.append("file", tempUrl) // Cloudinary fetches the DALL-E URL server-side
-    form.append("api_key", cloudKey)
-    form.append("timestamp", String(timestamp))
-    form.append("signature", signature)
-    form.append("folder", folder)
-    form.append("public_id", publicId)
+Art style: Professional children's book illustration, Disney-Pixar quality, vibrant colors, soft lighting, whimsical and magical atmosphere, high detail, masterpiece quality, suitable for a published children's book cover.`
 
-    const cloudRes = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      { method: "POST", body: form }
-    )
+    // Use DALL-E 3 for highest quality images
+    const response = await openai.images.generate({
+      model: "dall-e-3", // Using DALL-E 3 for highest quality
+      prompt: enhancedPrompt,
+      size: "1024x1024", // High resolution
+      quality: "standard", // Standard quality is usually sufficient and faster
+      style: "vivid", // More vibrant and hyper-real images
+      n: 1,
+    })
 
-    if (!cloudRes.ok) {
-      const errText = await cloudRes.text()
-      console.error("Cloudinary error:", errText)
-      // The DALL-E URL still works for ~60 minutes, return it so the UI isn't broken.
-      return NextResponse.json({
-        url: tempUrl,
-        cloudinaryFailed: true,
-        detail: errText,
-        revisedPrompt,
-      })
+    const imageUrl = response.data[0]?.url
+
+    if (!imageUrl) {
+      throw new Error('No image URL returned from DALL-E 3')
     }
 
-    const cloudJson = await cloudRes.json()
+    console.log('Image generated successfully with DALL-E 3')
 
     return NextResponse.json({
-      url: cloudJson.secure_url,
-      publicId: cloudJson.public_id,
-      width: cloudJson.width,
-      height: cloudJson.height,
-      theme,
-      revisedPrompt, // DALL-E 3 rewrites the prompt internally — useful to log/show
+      imageUrl,
+      model: 'dall-e-3',
+      size: '1024x1024',
+      quality: 'standard',
+      style: 'vivid'
     })
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Unknown error"
-    console.error("generate-image route error:", msg)
-    return NextResponse.json({ error: msg }, { status: 500 })
+
+  } catch (error) {
+    console.error('Image generation error:', error)
+    
+    // Handle specific OpenAI errors
+    if (error instanceof Error) {
+      if (error.message.includes('content_policy')) {
+        return NextResponse.json(
+          { 
+            error: 'Content not allowed',
+            details: 'The image prompt was rejected by content policy. Please try a different description.'
+          },
+          { status: 400 }
+        )
+      }
+      
+      if (error.message.includes('rate_limit')) {
+        return NextResponse.json(
+          { 
+            error: 'Rate limit exceeded',
+            details: 'Too many requests. Please wait a moment and try again.'
+          },
+          { status: 429 }
+        )
+      }
+    }
+    
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : 'Failed to generate image',
+        details: 'Image generation failed using DALL-E 3'
+      },
+      { status: 500 }
+    )
   }
 }
