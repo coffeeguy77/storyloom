@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { buildImagePrompt, type ThemeId, type PromptCharacter } from "@/lib/imagePrompts"
 import { buildStoryPrompt, buildStoryTitle } from "@/lib/storyPrompts"
-import { useSupabase, SupabaseProvider } from "@/lib/useSupabase"
+import { useSupabase } from "@/lib/useSupabase"
 import AuthGate from "@/components/AuthGate"
 import SharingPanel from "@/components/SharingPanel"
 import CommunityFeed from "@/components/CommunityFeed"
@@ -347,15 +347,13 @@ function FamilySetupScreen() {
 }
 
 // ============================================================================
-// MAIN APP COMPONENT (wrapped in SupabaseProvider + AuthGate)
+// MAIN APP COMPONENT (SupabaseProvider lives in layout.tsx, applied globally)
 // ============================================================================
 export default function StoryLoomPage() {
   return (
-    <SupabaseProvider>
-      <AuthGate>
-        <StoryLoomShell />
-      </AuthGate>
-    </SupabaseProvider>
+    <AuthGate>
+      <StoryLoomShell />
+    </AuthGate>
   )
 }
 
