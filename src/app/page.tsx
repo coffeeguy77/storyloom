@@ -64,55 +64,55 @@ const CLOUDINARY = {
 }
 
 // ============================================================================
-// THEMES DATA
+// THEMES DATA WITH WORKING UNSPLASH IMAGES
 // ============================================================================
 const themes: Theme[] = [
   {
     id: "dinosaur",
     name: "Dinosaur Adventure",
     description: "Explore a world where dinosaurs roam free",
-    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/dinosaur-theme_vkwjxt.jpg",
+    image: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=400&h=250&fit=crop&crop=center",
     colors: { primary: "#8B4513", secondary: "#228B22" },
   },
   {
     id: "space",
     name: "Space Explorer",
     description: "Journey to the stars and beyond",
-    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/space-theme_abc123.jpg", 
+    image: "https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=400&h=250&fit=crop&crop=center", 
     colors: { primary: "#1e3a8a", secondary: "#fbbf24" },
   },
   {
     id: "jungle",
     name: "Jungle Adventure",
     description: "Discover enchanted forests and magical creatures",
-    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/jungle-theme_xyz789.jpg",
+    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=250&fit=crop&crop=center",
     colors: { primary: "#db2777", secondary: "#a855f7" },
   },
   {
     id: "pirate",
     name: "Pirate Adventure", 
     description: "Sail the seven seas in search of treasure",
-    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/pirate-theme_def456.jpg",
+    image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=250&fit=crop&crop=center",
     colors: { primary: "#92400e", secondary: "#1f2937" },
   },
   {
     id: "ocean",
     name: "Ocean Quest", 
     description: "Dive deep into ocean mysteries",
-    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/ocean-theme_jkl012.jpg",
+    image: "https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=400&h=250&fit=crop&crop=center",
     colors: { primary: "#0ea5e9", secondary: "#10b981" },
   },
   {
     id: "monster-trucks",
     name: "Monster Truck Rally",
     description: "Rev up for high-octane adventures",
-    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/monster-trucks-theme_ghi789.jpg",
+    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=250&fit=crop&crop=center",
     colors: { primary: "#dc2626", secondary: "#1d4ed8" },
   },
 ]
 
 // ============================================================================
-// UTILITY FUNCTIONS  
+// UTILITY FUNCTIONS WITH OPENAI API CALLS
 // ============================================================================
 async function generateAIBookCover(prompt: string): Promise<string> {
   try {
@@ -376,11 +376,13 @@ export default function StoryLoom() {
   }
 
   const deleteCharacter = async (id: string) => {
-    try {
-      await dbDeleteCharacter(id)
-    } catch (err) {
-      setError("Failed to delete character")
-      console.error(err)
+    if (typeof window !== 'undefined' && confirm("Delete this character permanently?")) {
+      try {
+        await dbDeleteCharacter(id)
+      } catch (err) {
+        setError("Failed to delete character")
+        console.error(err)
+      }
     }
   }
 
@@ -481,19 +483,19 @@ export default function StoryLoom() {
       // Determine story type and content
       if (selectedTheme) {
         storyType = "theme"
-        setGenerationStage("Writing your story...")
+        setGenerationStage("Writing your story with GPT-4...")
         finalStoryContent = await generateAIStory(storyPrompt)
       } else if (manualContent) {
         storyType = "manual"
-        setGenerationStage("Creating your cover...")
+        setGenerationStage("Creating your cover with DALL-E 3...")
         finalStoryContent = manualContent
       } else {
         storyType = "ai" 
-        setGenerationStage("Writing your story...")
+        setGenerationStage("Writing your story with GPT-4...")
         finalStoryContent = await generateAIStory(storyPrompt)
       }
 
-      setGenerationStage("Painting the cover...")
+      setGenerationStage("Painting the cover with DALL-E 3...")
       const imageUrl = await generateAIBookCover(imagePrompt + (finalStoryContent ? `\n\nStory beginning: ${finalStoryContent.substring(0, 200)}...` : ""))
 
       const newStory = await addStory({
@@ -621,6 +623,9 @@ export default function StoryLoom() {
                 ✨ Your stories are safely saved to the cloud ✨
               </p>
             )}
+            <p className="text-white/60 text-xs mt-2">
+              🤖 Powered by GPT-4 stories & DALL-E 3 images
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
@@ -1085,6 +1090,8 @@ export default function StoryLoom() {
                     src={theme.image}
                     alt={theme.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => console.error(`Theme image failed to load: ${theme.name}`, e)}
+                    onLoad={() => console.log(`Theme image loaded: ${theme.name}`)}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4">
@@ -1225,6 +1232,9 @@ export default function StoryLoom() {
             <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
               Review & Edit Prompts
             </h1>
+            <p className="text-center text-white/60 mb-8">
+              ✨ Stories powered by GPT-4 • Images created with DALL-E 3 ✨
+            </p>
 
             <div className="space-y-6">
               <MagicalCard>
@@ -1241,7 +1251,7 @@ export default function StoryLoom() {
 
               <MagicalCard>
                 <div className="p-6">
-                  <h2 className="text-xl font-bold text-white mb-3">Story Prompt</h2>
+                  <h2 className="text-xl font-bold text-white mb-3">Story Prompt (GPT-4)</h2>
                   <textarea
                     value={storyPrompt}
                     onChange={(e) => setStoryPrompt(e.target.value)}
@@ -1253,7 +1263,7 @@ export default function StoryLoom() {
 
               <MagicalCard>
                 <div className="p-6">
-                  <h2 className="text-xl font-bold text-white mb-3">Image Prompt</h2>
+                  <h2 className="text-xl font-bold text-white mb-3">Image Prompt (DALL-E 3)</h2>
                   <textarea
                     value={imagePrompt}
                     onChange={(e) => setImagePrompt(e.target.value)}
@@ -1301,6 +1311,10 @@ export default function StoryLoom() {
                 <div className="mt-4 w-full bg-white/20 rounded-full h-2">
                   <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full animate-pulse" style={{width: generationStage.includes("Writing") ? "50%" : "90%"}} />
                 </div>
+                <p className="text-white/60 text-xs mt-4">
+                  {generationStage.includes("GPT-4") && "🤖 Using GPT-4 for premium story quality"}
+                  {generationStage.includes("DALL-E") && "🎨 Using DALL-E 3 for stunning artwork"}
+                </p>
               </div>
             </MagicalCard>
 
@@ -1348,6 +1362,9 @@ export default function StoryLoom() {
                       <span>• Featuring {currentStory.characters.map(c => c.name).join(", ")}</span>
                     )}
                   </div>
+                  <p className="text-white/40 text-xs mt-2">
+                    Generated with GPT-4 & DALL-E 3
+                  </p>
                 </div>
 
                 <div className="prose prose-invert prose-lg max-w-none">
@@ -1417,6 +1434,9 @@ export default function StoryLoom() {
                 <div className="text-center mb-8">
                   <p className="text-white/80">
                     {localStories.length} stor{localStories.length !== 1 ? 'ies' : 'y'} saved permanently to your cloud library
+                  </p>
+                  <p className="text-white/60 text-xs mt-2">
+                    All powered by GPT-4 & DALL-E 3
                   </p>
                 </div>
                 
