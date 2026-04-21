@@ -1,19 +1,12 @@
 // src/app/api/regenerate-cover/route.ts
 //
-// Re-runs cover generation for an existing story. Uses the story's saved
-// `image_prompt` (so the regenerated cover is consistent with what the user
-// originally reviewed) unless an override is provided. Updates `image_url`
-// in place.
-//
-// Auth: the request must carry the user's Supabase access token. We validate
-// the token server-side and ensure the caller owns the story being updated.
-//
+// Re-runs cover generation for an existing story using its saved image_prompt.
 // Body: { storyId: string, overridePrompt?: string }
 // Returns: { imageUrl: string }
 
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { uploadToCloudinary } from "../generate-image/route"
+import { uploadToCloudinary } from "@/lib/cloudinary"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -33,13 +26,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Supabase env vars missing" }, { status: 500 })
   }
 
-  // ---- Auth ----------------------------------------------------------------
   const authHeader = req.headers.get("authorization") ?? ""
   const token = authHeader.replace(/^Bearer\s+/i, "")
   if (!token) return NextResponse.json({ error: "Not signed in" }, { status: 401 })
 
-  // Build a client scoped to this user's token — RLS will enforce ownership
-  // when we read and write stories below.
   const supabase = createClient(supabaseUrl, supabaseAnon, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
@@ -50,7 +40,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid session" }, { status: 401 })
   }
 
-  // ---- Body ----------------------------------------------------------------
   let body: any
   try { body = await req.json() } catch {
     return NextResponse.json({ error: "Body must be JSON" }, { status: 400 })
@@ -63,7 +52,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "storyId required" }, { status: 400 })
   }
 
-  // ---- Fetch story (RLS enforces ownership) --------------------------------
   const { data: story, error: storyErr } = await supabase
     .from("stories")
     .select("id, title, image_prompt, content")
@@ -78,7 +66,6 @@ export async function POST(req: NextRequest) {
     story.image_prompt ??
     `Children's book cover illustration for "${story.title}". ${(story.content ?? "").slice(0, 200)}. Style: colorful, vibrant, magical, suitable for children.`
 
-  // ---- Generate via DALL-E 3 ----------------------------------------------
   try {
     const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
@@ -109,14 +96,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "OpenAI returned no image URL" }, { status: 502 })
     }
 
-    // ---- Upload to Cloudinary ---------------------------------------------
     const permanentUrl = await uploadToCloudinary({
       sourceUrl: tempUrl,
       cloudName, apiKey: cloudKey, apiSecret: cloudSecret,
       folder: "storyloom/covers",
     })
 
-    // ---- Persist (RLS enforces ownership again on the update) -------------
     const { error: updateErr } = await supabase
       .from("stories")
       .update({ image_url: permanentUrl })
