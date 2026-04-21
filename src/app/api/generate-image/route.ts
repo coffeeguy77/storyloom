@@ -1,93 +1,99 @@
-import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+// src/app/api/generate-image/route.ts
+//
+// Image generation endpoint. Uses DALL-E 3 at STANDARD quality only (per request).
+//
+// Accepts: { prompt: string, size?: "1024x1024" | "1792x1024" | "1024x1792" }
+// Returns: { imageUrl: string }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+import { NextRequest, NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
+export const runtime = "nodejs"
+export const maxDuration = 60
+
+export async function POST(req: NextRequest) {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "Server is missing OPENAI_API_KEY" },
+      { status: 500 }
+    )
+  }
+
+  let body: any
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
-      )
-    }
+    body = await req.json()
+  } catch {
+    return NextResponse.json(
+      { error: "Request body must be valid JSON" },
+      { status: 400 }
+    )
+  }
 
-    const body = await request.json()
-    const { prompt } = body
+  const prompt: string | undefined =
+    typeof body?.prompt === "string" && body.prompt.trim()
+      ? body.prompt
+      : typeof body?.imagePrompt === "string" && body.imagePrompt.trim()
+      ? body.imagePrompt
+      : undefined
 
-    if (!prompt || typeof prompt !== 'string') {
-      return NextResponse.json(
-        { error: 'Missing or invalid prompt' },
-        { status: 400 }
-      )
-    }
+  if (!prompt) {
+    return NextResponse.json(
+      { error: "Request must include a `prompt` string." },
+      { status: 400 }
+    )
+  }
 
-    console.log('Generating image with DALL-E 3...')
+  const size: "1024x1024" | "1792x1024" | "1024x1792" =
+    body?.size === "1792x1024" || body?.size === "1024x1792"
+      ? body.size
+      : "1024x1024"
 
-    // Enhanced prompt for children's book cover quality
-    const enhancedPrompt = `${prompt}
-
-Art style: Professional children's book illustration, Disney-Pixar quality, vibrant colors, soft lighting, whimsical and magical atmosphere, high detail, masterpiece quality, suitable for a published children's book cover.`
-
-    // Use DALL-E 3 for highest quality images
-    const response = await openai.images.generate({
-      model: "dall-e-3", // Using DALL-E 3 for highest quality
-      prompt: enhancedPrompt,
-      size: "1024x1024", // High resolution
-      quality: "standard", // Standard quality is usually sufficient and faster
-      style: "vivid", // More vibrant and hyper-real images
-      n: 1,
+  try {
+    const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "dall-e-3",
+        prompt,
+        n: 1,
+        size,
+        quality: "standard", // standard quality as requested
+        style: "vivid",
+        response_format: "url",
+      }),
     })
 
-    const imageUrl = response.data[0]?.url
+    if (!openaiRes.ok) {
+      const errText = await openaiRes.text()
+      console.error("OpenAI image API error:", openaiRes.status, errText)
+      return NextResponse.json(
+        {
+          error: "OpenAI image generation failed",
+          status: openaiRes.status,
+          detail: errText.slice(0, 500),
+        },
+        { status: 502 }
+      )
+    }
+
+    const data = await openaiRes.json()
+    const imageUrl: string | undefined = data?.data?.[0]?.url
 
     if (!imageUrl) {
-      throw new Error('No image URL returned from DALL-E 3')
+      return NextResponse.json(
+        { error: "OpenAI returned no image URL" },
+        { status: 502 }
+      )
     }
 
-    console.log('Image generated successfully with DALL-E 3')
-
-    return NextResponse.json({
-      imageUrl,
-      model: 'dall-e-3',
-      size: '1024x1024',
-      quality: 'standard',
-      style: 'vivid'
-    })
-
-  } catch (error) {
-    console.error('Image generation error:', error)
-    
-    // Handle specific OpenAI errors
-    if (error instanceof Error) {
-      if (error.message.includes('content_policy')) {
-        return NextResponse.json(
-          { 
-            error: 'Content not allowed',
-            details: 'The image prompt was rejected by content policy. Please try a different description.'
-          },
-          { status: 400 }
-        )
-      }
-      
-      if (error.message.includes('rate_limit')) {
-        return NextResponse.json(
-          { 
-            error: 'Rate limit exceeded',
-            details: 'Too many requests. Please wait a moment and try again.'
-          },
-          { status: 429 }
-        )
-      }
-    }
-    
+    return NextResponse.json({ imageUrl })
+  } catch (err: any) {
+    console.error("generate-image unexpected error:", err)
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'Failed to generate image',
-        details: 'Image generation failed using DALL-E 3'
-      },
+      { error: "Unexpected server error", detail: String(err?.message ?? err) },
       { status: 500 }
     )
   }
