@@ -82,10 +82,10 @@ const themes: Theme[] = [
     colors: { primary: "#1e3a8a", secondary: "#fbbf24" },
   },
   {
-    id: "fairy",
-    name: "Fairy Tale Magic",
+    id: "jungle",
+    name: "Jungle Adventure",
     description: "Discover enchanted forests and magical creatures",
-    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/fairy-theme_xyz789.jpg",
+    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/jungle-theme_xyz789.jpg",
     colors: { primary: "#db2777", secondary: "#a855f7" },
   },
   {
@@ -96,18 +96,18 @@ const themes: Theme[] = [
     colors: { primary: "#92400e", secondary: "#1f2937" },
   },
   {
-    id: "superhero",
-    name: "Superhero Mission",
-    description: "Save the day with incredible powers",
-    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/superhero-theme_ghi789.jpg",
-    colors: { primary: "#dc2626", secondary: "#1d4ed8" },
+    id: "ocean",
+    name: "Ocean Quest", 
+    description: "Dive deep into ocean mysteries",
+    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/ocean-theme_jkl012.jpg",
+    colors: { primary: "#0ea5e9", secondary: "#10b981" },
   },
   {
-    id: "underwater",
-    name: "Underwater Quest", 
-    description: "Dive deep into ocean mysteries",
-    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/underwater-theme_jkl012.jpg",
-    colors: { primary: "#0ea5e9", secondary: "#10b981" },
+    id: "monster-trucks",
+    name: "Monster Truck Rally",
+    description: "Rev up for high-octane adventures",
+    image: "https://res.cloudinary.com/dzx6x1hou/image/upload/q_auto,f_auto,w_300,h_200,c_fill,g_center/v1676509123/monster-trucks-theme_ghi789.jpg",
+    colors: { primary: "#dc2626", secondary: "#1d4ed8" },
   },
 ]
 
@@ -536,7 +536,7 @@ export default function StoryLoom() {
   }
 
   const deleteStory = async (id: string) => {
-    if (confirm("Delete this story permanently?")) {
+    if (typeof window !== 'undefined' && confirm("Delete this story permanently?")) {
       try {
         await dbDeleteStory(id)
       } catch (err) {
@@ -582,7 +582,11 @@ export default function StoryLoom() {
               <h2 className="text-2xl font-bold text-red-300 mb-4">Connection Error</h2>
               <p className="text-white/80 mb-6">Failed to connect to StoryLoom database: {dbError}</p>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.location.reload()
+                  }
+                }}
                 className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
               >
                 Retry Connection
