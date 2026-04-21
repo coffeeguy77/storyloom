@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react'
 import { supabase, type Family, type Character, type Story } from './supabase'
 
-// Generate browser fingerprint for family identification
+// Generate browser fingerprint for family identification (SSR-safe)
 function getBrowserId(): string {
+  // Only access localStorage in browser environment
+  if (typeof window === 'undefined') {
+    // During SSR, return a temporary ID
+    return 'ssr_temp_' + Math.random().toString(36).substr(2, 9)
+  }
+  
   let browserId = localStorage.getItem('storyloom_browser_id')
   if (!browserId) {
     browserId = 'browser_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
@@ -17,12 +23,19 @@ export function useSupabase() {
   const [stories, setStories] = useState<Story[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [browserId] = useState(() => getBrowserId())
+  const [browserId, setBrowserId] = useState<string>('')
+
+  // Initialize browserId in useEffect to avoid SSR issues
+  useEffect(() => {
+    setBrowserId(getBrowserId())
+  }, [])
 
   // Initialize family and load data
   useEffect(() => {
-    initializeFamily()
-  }, [])
+    if (browserId) {
+      initializeFamily()
+    }
+  }, [browserId])
 
   const initializeFamily = async () => {
     try {
@@ -63,8 +76,10 @@ export function useSupabase() {
         loadStories(existingFamily.id)
       ])
 
-      // Migrate from localStorage if needed
-      await migrateFromLocalStorage(existingFamily.id)
+      // Migrate from localStorage if needed (browser-only)
+      if (typeof window !== 'undefined') {
+        await migrateFromLocalStorage(existingFamily.id)
+      }
 
     } catch (err) {
       console.error('Failed to initialize family:', err)
@@ -106,6 +121,9 @@ export function useSupabase() {
 
   const migrateFromLocalStorage = async (familyId: string) => {
     try {
+      // Only run in browser environment
+      if (typeof window === 'undefined') return
+
       const localChars = localStorage.getItem('storyloom_characters')
       const localStories = localStorage.getItem('storyloom_stories')
 
