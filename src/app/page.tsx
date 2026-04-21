@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { buildImagePrompt, type ThemeId, type PromptCharacter } from "@/lib/imagePrompts"
 import { buildStoryPrompt, buildStoryTitle } from "@/lib/storyPrompts"
-import { useSupabase } from "@/lib/useSupabase"
+import { useSupabase, SupabaseProvider } from "@/lib/useSupabase"
 import AuthGate from "@/components/AuthGate"
 import SharingPanel from "@/components/SharingPanel"
 import CommunityFeed from "@/components/CommunityFeed"
@@ -284,7 +284,6 @@ function UserBar() {
 // ============================================================================
 function FamilySetupScreen() {
   const { profile, createFamily } = useSupabase()
-  // Sensible default suggestion, but user is free to replace it.
   const [name, setName] = useState(
     profile?.display_name ? `${profile.display_name}'s Family` : ""
   )
@@ -337,10 +336,7 @@ function FamilySetupScreen() {
                 {busy ? "Creating…" : "Create my family"}
               </button>
               <p className="text-white/60 text-xs text-center pt-2">
-                If you used StoryLoom before accounts existed and want to bring
-                your old stories in, stop here and run the migration SQL in
-                Supabase first — your old family will be claimed automatically
-                and this screen will go away.
+                You can rename your family any time from the home screen.
               </p>
             </div>
           </MagicalCard>
@@ -351,18 +347,20 @@ function FamilySetupScreen() {
 }
 
 // ============================================================================
-// MAIN APP COMPONENT (wrapped in AuthGate)
+// MAIN APP COMPONENT (wrapped in SupabaseProvider + AuthGate)
 // ============================================================================
 export default function StoryLoomPage() {
   return (
-    <AuthGate>
-      <StoryLoomShell />
-    </AuthGate>
+    <SupabaseProvider>
+      <AuthGate>
+        <StoryLoomShell />
+      </AuthGate>
+    </SupabaseProvider>
   )
 }
 
-// Intermediate shell: decides whether to show the family-setup screen or the
-// main StoryLoom app based on whether the user has a family yet.
+// Intermediate shell: shows family-setup screen if no family yet, otherwise
+// shows the main app.
 function StoryLoomShell() {
   const { isLoading, error: dbError, family } = useSupabase()
 
@@ -437,20 +435,16 @@ function StoryLoom() {
   const [error, setError] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
 
-  // Character management
   const [newCharacterName, setNewCharacterName] = useState("")
   const [newGuestName, setNewGuestName] = useState("")
 
-  // Manual story
   const [manualTitle, setManualTitle] = useState("")
   const [manualContent, setManualContent] = useState("")
 
-  // AI story
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiGenre, setAiGenre] = useState("Adventure")
   const [aiLength, setAiLength] = useState("Medium")
 
-  // Family settings
   const [familyNameInput, setFamilyNameInput] = useState("")
   const [familySaveBusy, setFamilySaveBusy] = useState(false)
 
