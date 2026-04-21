@@ -1,21 +1,18 @@
 // src/lib/useSupabase.ts
 //
-// Rewritten for Supabase Auth. Keeps the return shape the current page.tsx
-// relies on so existing call sites keep working unchanged, and adds:
-//   - `createFamily(name)` for first-run setup
-//   - `renameFamily(name)` for edit
-//   - `user`, `profile`, `isAdmin`, `authLoading`
-//   - `signUp`, `signIn`, `signOut`, `resetPassword`
+// Rewritten to use React Context so state is shared across every component
+// that calls useSupabase(). Public shape unchanged — same fields, same
+// methods, same signatures. Existing call sites work without modification.
 //
-// `family` is null until the user either claims an orphan family via the
-// migration script or creates one via the first-run setup screen.
+// The one thing callers must do: wrap their tree in <SupabaseProvider> once,
+// at the root. See page.tsx integration note.
 
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { createClient, type Session, type SupabaseClient, type User } from "@supabase/supabase-js"
 
-// ---------- Types -----------------------------------------------------------
+// ---------- Types (unchanged from previous version) -------------------------
 export type Family = {
   id: string
   user_id: string
@@ -62,6 +59,38 @@ export type NewStoryInput = {
   characters: Array<{ id?: string; name: string; isGuest?: boolean }>
 }
 
+// ---------- Context shape ---------------------------------------------------
+type SupabaseContextValue = {
+  client: SupabaseClient | null
+  session: Session | null
+  user: User | null
+  profile: Profile | null
+  isAdmin: boolean
+  authLoading: boolean
+
+  family: Family | null
+  characters: CharacterRow[]
+  stories: StoryRow[]
+  isLoading: boolean
+  error: string | null
+
+  signUp: (email: string, password: string, displayName: string) => Promise<any>
+  signIn: (email: string, password: string) => Promise<any>
+  signOut: () => Promise<void>
+  resetPassword: (email: string) => Promise<void>
+
+  createFamily: (name: string) => Promise<Family>
+  renameFamily: (newName: string) => Promise<void>
+
+  addCharacter: (name: string, isGuest: boolean) => Promise<CharacterRow>
+  deleteCharacter: (id: string) => Promise<void>
+  addStory: (input: NewStoryInput) => Promise<StoryRow | null>
+  deleteStory: (id: string) => Promise<void>
+  reload: () => Promise<void>
+}
+
+const SupabaseContext = createContext<SupabaseContextValue | null>(null)
+
 // ---------- Singleton client -----------------------------------------------
 let _client: SupabaseClient | null = null
 function getClient(): SupabaseClient | null {
@@ -79,8 +108,8 @@ function getClient(): SupabaseClient | null {
   return _client
 }
 
-// ---------- Hook ------------------------------------------------------------
-export function useSupabase() {
+// ---------- Provider --------------------------------------------------------
+export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const [client, setClient] = useState<SupabaseClient | null>(null)
 
   const [session, setSession] = useState<Session | null>(null)
@@ -114,17 +143,6 @@ export function useSupabase() {
     return () => sub.subscription.unsubscribe()
   }, [])
 
-  useEffect(() => {
-    if (!client) return
-    if (!user) {
-      setProfile(null); setFamily(null); setCharacters([]); setStories([])
-      setIsLoading(false); setError(null)
-      return
-    }
-    void loadEverything()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, user?.id])
-
   const loadEverything = useCallback(async () => {
     if (!client || !user) return
     setIsLoading(true); setError(null)
@@ -155,14 +173,24 @@ export function useSupabase() {
       setCharacters((chRes.data as CharacterRow[]) ?? [])
       setStories((stRes.data as StoryRow[]) ?? [])
     } catch (e: any) {
-      console.error("useSupabase.loadEverything:", e)
+      console.error("SupabaseProvider.loadEverything:", e)
       setError(e?.message ?? "Failed to load your library")
     } finally {
       setIsLoading(false)
     }
   }, [client, user])
 
-  // ---------- Auth actions --------------------------------------------------
+  useEffect(() => {
+    if (!client) return
+    if (!user) {
+      setProfile(null); setFamily(null); setCharacters([]); setStories([])
+      setIsLoading(false); setError(null)
+      return
+    }
+    void loadEverything()
+  }, [client, user?.id, loadEverything])
+
+  // ---------- Auth ----------------------------------------------------------
   const signUp = useCallback(async (email: string, password: string, displayName: string) => {
     if (!client) throw new Error("Not ready")
     const { data, error } = await client.auth.signUp({
@@ -205,7 +233,6 @@ export function useSupabase() {
       .from("families").insert({ user_id: user.id, name: trimmed }).select().single()
     if (error) throw error
     setFamily(data as Family)
-    // Fresh family starts empty; no characters/stories to reload.
     setCharacters([])
     setStories([])
     return data as Family
@@ -267,14 +294,12 @@ export function useSupabase() {
     setStories((prev) => prev.filter((s) => s.id !== id))
   }, [client, family])
 
-  return useMemo(() => ({
-    client,
-    session, user, profile, isAdmin, authLoading,
+  const value = useMemo<SupabaseContextValue>(() => ({
+    client, session, user, profile, isAdmin, authLoading,
     family, characters, stories, isLoading, error,
     signUp, signIn, signOut, resetPassword,
     createFamily, renameFamily,
-    addCharacter, deleteCharacter,
-    addStory, deleteStory,
+    addCharacter, deleteCharacter, addStory, deleteStory,
     reload: loadEverything,
   }), [
     client, session, user, profile, isAdmin, authLoading,
@@ -282,4 +307,19 @@ export function useSupabase() {
     signUp, signIn, signOut, resetPassword,
     createFamily, renameFamily, addCharacter, deleteCharacter, addStory, deleteStory, loadEverything,
   ])
+
+  return React.createElement(SupabaseContext.Provider, { value }, children)
+}
+
+// ---------- Hook ------------------------------------------------------------
+// Keeps the exact same API your components already use. Just reads from
+// context instead of owning state.
+export function useSupabase() {
+  const ctx = useContext(SupabaseContext)
+  if (!ctx) {
+    throw new Error(
+      "useSupabase must be used inside <SupabaseProvider>. Wrap your app in page.tsx (or layout.tsx) with <SupabaseProvider>."
+    )
+  }
+  return ctx
 }
