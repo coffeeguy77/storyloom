@@ -1,12 +1,16 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { buildImagePrompt, type ThemeId, type PromptCharacter } from "@/lib/imagePrompts"
 import { buildStoryPrompt, buildStoryTitle } from "@/lib/storyPrompts"
 import { useSupabase } from "@/lib/useSupabase"
+import AuthGate from "@/components/AuthGate"
+import SharingPanel from "@/components/SharingPanel"
+import CommunityFeed from "@/components/CommunityFeed"
 
 // ============================================================================
-// TYPE DEFINITIONS  
+// TYPE DEFINITIONS
 // ============================================================================
 type Theme = {
   id: string
@@ -35,18 +39,21 @@ type LocalStory = {
   imagePrompt?: string
 }
 
-type Screen = 
-  | "home" 
-  | "characters" 
-  | "builder" 
-  | "manualBuilder" 
-  | "aiBuilder" 
-  | "themeList" 
-  | "prepare" 
-  | "review" 
-  | "generating" 
-  | "reading" 
+type Screen =
+  | "home"
+  | "characters"
+  | "builder"
+  | "manualBuilder"
+  | "aiBuilder"
+  | "themeList"
+  | "prepare"
+  | "review"
+  | "generating"
+  | "reading"
   | "library"
+  | "sharing"
+  | "community"
+  | "familySettings"
 
 // ============================================================================
 // CLOUDINARY ASSETS
@@ -55,7 +62,7 @@ const CLOUDINARY = {
   tommyLogo: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776662026/tommy-logo.png",
   icons: {
     myKids: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688045/my-kids.png",
-    tommyDream: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688046/tommy-dream.png", 
+    tommyDream: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688046/tommy-dream.png",
     tommyRead: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688047/tommy-read.png",
     tommyWrite: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688046/tommy-write.png",
     tommyAi: "https://res.cloudinary.com/dzx6x1hou/image/upload/v1776688049/tommy-ai.png",
@@ -64,7 +71,7 @@ const CLOUDINARY = {
 }
 
 // ============================================================================
-// THEMES DATA WITH WORKING UNSPLASH IMAGES
+// THEMES DATA
 // ============================================================================
 const themes: Theme[] = [
   {
@@ -78,7 +85,7 @@ const themes: Theme[] = [
     id: "space",
     name: "Space Explorer",
     description: "Journey to the stars and beyond",
-    image: "https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=400&h=250&fit=crop&crop=center", 
+    image: "https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=400&h=250&fit=crop&crop=center",
     colors: { primary: "#1e3a8a", secondary: "#fbbf24" },
   },
   {
@@ -90,14 +97,14 @@ const themes: Theme[] = [
   },
   {
     id: "pirate",
-    name: "Pirate Adventure", 
+    name: "Pirate Adventure",
     description: "Sail the seven seas in search of treasure",
     image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=250&fit=crop&crop=center",
     colors: { primary: "#92400e", secondary: "#1f2937" },
   },
   {
     id: "ocean",
-    name: "Ocean Quest", 
+    name: "Ocean Quest",
     description: "Dive deep into ocean mysteries",
     image: "https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=400&h=250&fit=crop&crop=center",
     colors: { primary: "#0ea5e9", secondary: "#10b981" },
@@ -112,52 +119,36 @@ const themes: Theme[] = [
 ]
 
 // ============================================================================
-// UTILITY FUNCTIONS WITH OPENAI API CALLS
+// OPENAI API CALLS
 // ============================================================================
 async function generateAIBookCover(prompt: string): Promise<string> {
-  try {
-    const response = await fetch("/api/generate-image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Image generation failed: ${error}`)
-    }
-
-    const data = await response.json()
-    if (!data.imageUrl) throw new Error("No image URL returned")
-
-    return data.imageUrl
-  } catch (error) {
-    console.error("Cover generation error:", error)
-    throw error
+  const response = await fetch("/api/generate-image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  })
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Image generation failed: ${error}`)
   }
+  const data = await response.json()
+  if (!data.imageUrl) throw new Error("No image URL returned")
+  return data.imageUrl
 }
 
 async function generateAIStory(prompt: string): Promise<string> {
-  try {
-    const response = await fetch("/api/generate-story", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Story generation failed: ${error}`)
-    }
-
-    const data = await response.json()
-    if (!data.story) throw new Error("No story content returned")
-
-    return data.story
-  } catch (error) {
-    console.error("Story generation error:", error)
-    throw error
+  const response = await fetch("/api/generate-story", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  })
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Story generation failed: ${error}`)
   }
+  const data = await response.json()
+  if (!data.story) throw new Error("No story content returned")
+  return data.story
 }
 
 // ============================================================================
@@ -206,8 +197,6 @@ function TommyLogo() {
         alt="StoryLoom — Tommy's magical stories"
         className="w-full max-w-[768px] h-auto drop-shadow-2xl relative z-50"
         style={{ opacity: 1 }}
-        onError={(e) => console.error('Tommy logo failed to load:', e)}
-        onLoad={() => console.log('Tommy logo loaded successfully')}
       />
     </div>
   )
@@ -221,8 +210,6 @@ function TommyHeaderLogo() {
         alt="StoryLoom"
         className="w-full max-w-[400px] h-auto drop-shadow-xl relative z-50"
         style={{ opacity: 1 }}
-        onError={(e) => console.error('Tommy header logo failed to load:', e)}
-        onLoad={() => console.log('Tommy header logo loaded successfully')}
       />
     </div>
   )
@@ -242,8 +229,6 @@ function TommyIcon({
       src={CLOUDINARY.icons[iconKey]}
       alt={alt}
       className={`w-full max-w-[272px] h-auto object-contain drop-shadow-xl ${className}`}
-      onError={(e) => console.error(`Tommy icon ${iconKey} failed to load:`, e)}
-      onLoad={() => console.log(`Tommy icon ${iconKey} loaded successfully`)}
     />
   )
 }
@@ -278,21 +263,165 @@ function MagicalCard({
   )
 }
 
+function UserBar() {
+  const { profile, user, signOut } = useSupabase()
+  if (!user) return null
+  return (
+    <div className="absolute top-4 right-4 z-20 flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-2">
+      <span className="text-white/90 text-sm">{profile?.display_name ?? user.email}</span>
+      <button
+        onClick={signOut}
+        className="text-white/80 hover:text-white text-sm underline"
+      >
+        Sign out
+      </button>
+    </div>
+  )
+}
+
 // ============================================================================
-// MAIN APP COMPONENT
+// FIRST-RUN FAMILY SETUP — shown when signed in but family is null
 // ============================================================================
-export default function StoryLoom() {
-  // Supabase data and operations
+function FamilySetupScreen() {
+  const { profile, createFamily } = useSupabase()
+  // Sensible default suggestion, but user is free to replace it.
+  const [name, setName] = useState(
+    profile?.display_name ? `${profile.display_name}'s Family` : ""
+  )
+  const [busy, setBusy] = useState(false)
+  const [errMsg, setErrMsg] = useState<string | null>(null)
+
+  async function onCreate() {
+    setBusy(true); setErrMsg(null)
+    try { await createFamily(name) }
+    catch (e: any) { setErrMsg(e?.message ?? "Failed to create family") }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="min-h-screen">
+      <AnimatedBackground />
+      <UserBar />
+      <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-12 min-h-screen">
+        <TommyHeaderLogo />
+        <div className="max-w-xl w-full">
+          <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-2xl">
+            Welcome to StoryLoom!
+          </h1>
+          <p className="text-lg text-white/85 mb-8 drop-shadow">
+            Before we start, what should we call your family? This is where all
+            your stories and characters will live. You can change it any time.
+          </p>
+
+          <MagicalCard>
+            <div className="p-8 space-y-4">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={60}
+                placeholder="e.g. The Smith Family"
+                className="w-full p-4 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/30 text-lg focus:border-white/60 focus:outline-none"
+                onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) onCreate() }}
+              />
+              {errMsg && (
+                <div className="text-red-200 text-center bg-red-500/20 p-3 rounded-lg text-sm">
+                  {errMsg}
+                </div>
+              )}
+              <button
+                onClick={onCreate}
+                disabled={busy || !name.trim()}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {busy ? "Creating…" : "Create my family"}
+              </button>
+              <p className="text-white/60 text-xs text-center pt-2">
+                If you used StoryLoom before accounts existed and want to bring
+                your old stories in, stop here and run the migration SQL in
+                Supabase first — your old family will be claimed automatically
+                and this screen will go away.
+              </p>
+            </div>
+          </MagicalCard>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// MAIN APP COMPONENT (wrapped in AuthGate)
+// ============================================================================
+export default function StoryLoomPage() {
+  return (
+    <AuthGate>
+      <StoryLoomShell />
+    </AuthGate>
+  )
+}
+
+// Intermediate shell: decides whether to show the family-setup screen or the
+// main StoryLoom app based on whether the user has a family yet.
+function StoryLoomShell() {
+  const { isLoading, error: dbError, family } = useSupabase()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <UserBar />
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-12 min-h-screen">
+          <MagicalCard>
+            <div className="p-12 text-center">
+              <div className="animate-spin w-16 h-16 border-4 border-white/20 border-t-white rounded-full mx-auto mb-6" />
+              <h2 className="text-2xl font-bold text-white mb-4">Loading StoryLoom...</h2>
+              <p className="text-white/80">Connecting to your stories...</p>
+            </div>
+          </MagicalCard>
+        </div>
+      </div>
+    )
+  }
+
+  if (dbError) {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <UserBar />
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-12 min-h-screen">
+          <MagicalCard>
+            <div className="p-12 text-center">
+              <h2 className="text-2xl font-bold text-red-300 mb-4">Connection Error</h2>
+              <p className="text-white/80 mb-6">{dbError}</p>
+              <button
+                onClick={() => typeof window !== "undefined" && window.location.reload()}
+                className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </MagicalCard>
+        </div>
+      </div>
+    )
+  }
+
+  if (!family) return <FamilySetupScreen />
+
+  return <StoryLoom />
+}
+
+function StoryLoom() {
   const {
     family,
     characters,
     stories,
-    isLoading,
-    error: dbError,
     addCharacter: dbAddCharacter,
     deleteCharacter: dbDeleteCharacter,
     addStory,
     deleteStory: dbDeleteStory,
+    renameFamily,
   } = useSupabase()
 
   // App state
@@ -307,137 +436,98 @@ export default function StoryLoom() {
   const [generationStage, setGenerationStage] = useState("")
   const [error, setError] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
-  
-  // Character management state
+
+  // Character management
   const [newCharacterName, setNewCharacterName] = useState("")
   const [newGuestName, setNewGuestName] = useState("")
-  
-  // Manual story builder states
+
+  // Manual story
   const [manualTitle, setManualTitle] = useState("")
   const [manualContent, setManualContent] = useState("")
-  
-  // AI story builder states  
+
+  // AI story
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiGenre, setAiGenre] = useState("Adventure")
   const [aiLength, setAiLength] = useState("Medium")
 
-  // Helper functions
-  const go = (newScreen: Screen) => {
-    setScreen(newScreen)
-    setError("")
-  }
+  // Family settings
+  const [familyNameInput, setFamilyNameInput] = useState("")
+  const [familySaveBusy, setFamilySaveBusy] = useState(false)
 
-  const showTommyHeader = screen !== "home" && screen !== "themeList" && screen !== "prepare"
+  const go = (newScreen: Screen) => { setScreen(newScreen); setError("") }
 
-  // Convert database characters to local format for UI compatibility
-  const localCharacters: LocalCharacter[] = characters.map(char => ({
-    id: char.id,
-    name: char.name,
-    isGuest: char.is_guest,
+  const showTommyHeader =
+    screen !== "home" && screen !== "themeList" && screen !== "prepare"
+
+  const localCharacters: LocalCharacter[] = characters.map((c) => ({
+    id: c.id, name: c.name, isGuest: c.is_guest,
   }))
 
-  // Convert database stories to local format for UI compatibility
-  const localStories: LocalStory[] = stories.map(story => ({
-    id: story.id,
-    title: story.title,
-    content: story.content,
-    imageUrl: story.image_url,
-    themeId: story.theme_id as ThemeId,
-    characters: story.characters || [],
-    createdAt: story.created_at,
-    storyType: story.story_type,
-    userPrompt: story.user_prompt,
-    imagePrompt: story.image_prompt,
+  const localStories: LocalStory[] = stories.map((s) => ({
+    id: s.id,
+    title: s.title,
+    content: s.content,
+    imageUrl: s.image_url,
+    themeId: s.theme_id as ThemeId,
+    characters: (s.characters ?? []) as LocalCharacter[],
+    createdAt: s.created_at,
+    storyType: s.story_type,
+    userPrompt: s.user_prompt ?? undefined,
+    imagePrompt: s.image_prompt ?? undefined,
   }))
 
-  // ============================================================================
-  // CHARACTER MANAGEMENT
-  // ============================================================================
+  // ========== Characters ==========
   const addCharacter = async () => {
     if (!newCharacterName.trim()) return
-    try {
-      await dbAddCharacter(newCharacterName.trim(), false)
-      setNewCharacterName("")
-    } catch (err) {
-      setError("Failed to add character")
-      console.error(err)
-    }
+    try { await dbAddCharacter(newCharacterName.trim(), false); setNewCharacterName("") }
+    catch (err) { setError("Failed to add character"); console.error(err) }
   }
 
   const addGuest = async () => {
     if (!newGuestName.trim()) return
-    try {
-      await dbAddCharacter(newGuestName.trim(), true)
-      setNewGuestName("")
-    } catch (err) {
-      setError("Failed to add guest")
-      console.error(err)
-    }
+    try { await dbAddCharacter(newGuestName.trim(), true); setNewGuestName("") }
+    catch (err) { setError("Failed to add guest"); console.error(err) }
   }
 
   const deleteCharacter = async (id: string) => {
-    if (typeof window !== 'undefined' && confirm("Delete this character permanently?")) {
-      try {
-        await dbDeleteCharacter(id)
-      } catch (err) {
-        setError("Failed to delete character")
-        console.error(err)
-      }
+    if (typeof window !== "undefined" && confirm("Delete this character permanently?")) {
+      try { await dbDeleteCharacter(id) }
+      catch (err) { setError("Failed to delete character"); console.error(err) }
     }
   }
 
-  // ============================================================================
-  // STORY GENERATION
-  // ============================================================================
+  // ========== Story generation ==========
   const startThemeStory = (theme: Theme) => {
-    setSelectedTheme(theme)
-    setSelectedCharacters([])
-    setCustomPrompt("")
-    go("prepare")
+    setSelectedTheme(theme); setSelectedCharacters([]); setCustomPrompt(""); go("prepare")
   }
 
   const startManualStory = () => {
-    setManualTitle("")
-    setManualContent("")
-    go("manualBuilder")
+    setManualTitle(""); setManualContent(""); setSelectedTheme(null); go("manualBuilder")
   }
 
   const startAIStory = () => {
-    setAiPrompt("")
-    setAiGenre("Adventure")
-    setAiLength("Medium")
-    go("aiBuilder")
+    setAiPrompt(""); setAiGenre("Adventure"); setAiLength("Medium"); setSelectedTheme(null); go("aiBuilder")
   }
 
   const proceedToReview = () => {
     if (!selectedTheme) return
-
-    // Convert local characters to PromptCharacter format
-    const promptCharacters: PromptCharacter[] = selectedCharacters.map(c => ({
-      name: c.name,
-      isGuest: c.isGuest || false,
+    const promptCharacters: PromptCharacter[] = selectedCharacters.map((c) => ({
+      name: c.name, isGuest: c.isGuest || false,
     }))
-
-    // Call functions with correct signature - passing objects with required properties
     const generatedTitle = buildStoryTitle({
-      theme: selectedTheme.id as ThemeId,
-      characters: promptCharacters,
+      theme: selectedTheme.id as ThemeId, characters: promptCharacters,
     })
-
     const generatedStoryPrompt = buildStoryPrompt({
       theme: selectedTheme.id as ThemeId,
       characters: promptCharacters,
       customAngle: customPrompt || undefined,
     })
-
     const generatedImagePrompt = buildImagePrompt({
       theme: selectedTheme.id as ThemeId,
       characters: promptCharacters,
       storyTitle: generatedTitle,
     })
-
     setStoryTitle(generatedTitle)
-    // buildStoryPrompt returns { system, user }, we need the user part for the API call
     setStoryPrompt(generatedStoryPrompt.user)
     setImagePrompt(generatedImagePrompt)
     go("review")
@@ -445,10 +535,8 @@ export default function StoryLoom() {
 
   const proceedManualToReview = () => {
     if (!manualTitle.trim() || !manualContent.trim()) {
-      setError("Please fill in both title and story content")
-      return
+      setError("Please fill in both title and story content"); return
     }
-
     setStoryTitle(manualTitle)
     setStoryPrompt(`Create a children's book cover for this story:\n\n"${manualTitle}"\n\n${manualContent.substring(0, 200)}...`)
     setImagePrompt(`Children's book cover illustration for "${manualTitle}". ${manualContent.substring(0, 100)}... Style: colorful, engaging, suitable for children`)
@@ -456,47 +544,39 @@ export default function StoryLoom() {
   }
 
   const proceedAIToReview = () => {
-    if (!aiPrompt.trim()) {
-      setError("Please describe your story idea")
-      return
-    }
-
-    const titlePrompt = `Create a catchy children's book title for this story idea: ${aiPrompt}. Just return the title, nothing else.`
-    const storyPromptText = `Write a ${aiLength.toLowerCase()} children's story in the ${aiGenre.toLowerCase()} genre about: ${aiPrompt}. Include the characters: ${selectedCharacters.map(c => c.name).join(", ")}. Make it magical and engaging for children ages 4-8.`
-    const coverPrompt = `Children's book cover illustration: ${aiPrompt}. Characters: ${selectedCharacters.map(c => c.name).join(", ")}. Style: vibrant, magical, ${aiGenre.toLowerCase()} theme, suitable for children`
-
-    setStoryTitle(titlePrompt)
+    if (!aiPrompt.trim()) { setError("Please describe your story idea"); return }
+    const titleGuess = aiPrompt.split(/\s+/).slice(0, 6).join(" ")
+    const storyPromptText = `Write a ${aiLength.toLowerCase()} children's story in the ${aiGenre.toLowerCase()} genre about: ${aiPrompt}. Include the characters: ${selectedCharacters.map((c) => c.name).join(", ")}. Make it magical and engaging for children ages 4-8.`
+    const coverPrompt = `Children's book cover illustration: ${aiPrompt}. Characters: ${selectedCharacters.map((c) => c.name).join(", ")}. Style: vibrant, magical, ${aiGenre.toLowerCase()} theme, suitable for children`
+    setStoryTitle(titleGuess)
     setStoryPrompt(storyPromptText)
     setImagePrompt(coverPrompt)
     go("review")
   }
 
   const generateStory = async () => {
-    setIsGenerating(true)
-    setError("")
-    go("generating")
-
+    setIsGenerating(true); setError(""); go("generating")
     try {
       let finalStoryContent = ""
       let storyType: "theme" | "manual" | "ai" = "theme"
 
-      // Determine story type and content
       if (selectedTheme) {
         storyType = "theme"
         setGenerationStage("Writing your story with GPT-4...")
         finalStoryContent = await generateAIStory(storyPrompt)
       } else if (manualContent) {
         storyType = "manual"
-        setGenerationStage("Creating your cover with DALL-E 3...")
         finalStoryContent = manualContent
       } else {
-        storyType = "ai" 
+        storyType = "ai"
         setGenerationStage("Writing your story with GPT-4...")
         finalStoryContent = await generateAIStory(storyPrompt)
       }
 
       setGenerationStage("Painting the cover with DALL-E 3...")
-      const imageUrl = await generateAIBookCover(imagePrompt + (finalStoryContent ? `\n\nStory beginning: ${finalStoryContent.substring(0, 200)}...` : ""))
+      const imageUrl = await generateAIBookCover(
+        imagePrompt + (finalStoryContent ? `\n\nStory beginning: ${finalStoryContent.substring(0, 200)}...` : "")
+      )
 
       const newStory = await addStory({
         title: storyTitle,
@@ -516,11 +596,11 @@ export default function StoryLoom() {
           content: newStory.content,
           imageUrl: newStory.image_url,
           themeId: newStory.theme_id as ThemeId,
-          characters: newStory.characters || [],
+          characters: (newStory.characters ?? []) as LocalCharacter[],
           createdAt: newStory.created_at,
           storyType: newStory.story_type,
-          userPrompt: newStory.user_prompt,
-          imagePrompt: newStory.image_prompt,
+          userPrompt: newStory.user_prompt ?? undefined,
+          imagePrompt: newStory.image_prompt ?? undefined,
         })
         go("reading")
       }
@@ -532,155 +612,168 @@ export default function StoryLoom() {
     }
   }
 
-  const readStory = (story: LocalStory) => {
-    setCurrentStory(story)
-    go("reading")
-  }
+  const readStory = (story: LocalStory) => { setCurrentStory(story); go("reading") }
 
   const deleteStory = async (id: string) => {
-    if (typeof window !== 'undefined' && confirm("Delete this story permanently?")) {
-      try {
-        await dbDeleteStory(id)
-      } catch (err) {
-        setError("Failed to delete story")
-        console.error(err)
-      }
+    if (typeof window !== "undefined" && confirm("Delete this story permanently?")) {
+      try { await dbDeleteStory(id) }
+      catch (err) { setError("Failed to delete story"); console.error(err) }
     }
   }
 
-  // ============================================================================
-  // LOADING AND ERROR STATES
-  // ============================================================================
-  
-  // Show loading state while Supabase initializes
-  if (isLoading) {
-    return (
-      <div className="min-h-screen">
-        <AnimatedBackground />
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-12 min-h-screen">
-          <MagicalCard>
-            <div className="p-12 text-center">
-              <div className="animate-spin w-16 h-16 border-4 border-white/20 border-t-white rounded-full mx-auto mb-6" />
-              <h2 className="text-2xl font-bold text-white mb-4">Loading StoryLoom...</h2>
-              <p className="text-white/80">Connecting to your stories...</p>
-              {family && (
-                <p className="text-white/60 text-sm mt-2">Family ID: {family.name}</p>
-              )}
-            </div>
-          </MagicalCard>
-        </div>
-      </div>
-    )
+  // ========== Family rename ==========
+  const openFamilySettings = () => {
+    setFamilyNameInput(family?.name ?? "")
+    go("familySettings")
+  }
+  const saveFamilyName = async () => {
+    setFamilySaveBusy(true); setError("")
+    try { await renameFamily(familyNameInput); go("home") }
+    catch (e: any) { setError(e?.message ?? "Failed to rename family") }
+    finally { setFamilySaveBusy(false) }
   }
 
-  // Show error state if database connection fails
-  if (dbError) {
-    return (
-      <div className="min-h-screen">
-        <AnimatedBackground />
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-12 min-h-screen">
-          <MagicalCard>
-            <div className="p-12 text-center">
-              <h2 className="text-2xl font-bold text-red-300 mb-4">Connection Error</h2>
-              <p className="text-white/80 mb-6">Failed to connect to StoryLoom database: {dbError}</p>
-              <button
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    window.location.reload()
-                  }
-                }}
-                className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-              >
-                Retry Connection
-              </button>
-            </div>
-          </MagicalCard>
-        </div>
-      </div>
-    )
-  }
-
-  // ============================================================================
-  // SCREEN RENDERS
-  // ============================================================================
-
+  // ========== Screens ==========
   if (screen === "home") {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 flex flex-col items-center text-center pt-6">
           <TommyLogo />
-          
+
           <div className="mb-16">
-            <h1 className="text-6xl font-bold text-white mb-6 drop-shadow-2xl">
-              Welcome to Tommy's World
-            </h1>
+            <h1 className="text-6xl font-bold text-white mb-6 drop-shadow-2xl">Welcome to Tommy's World</h1>
             <p className="text-xl text-white/90 max-w-3xl leading-relaxed drop-shadow-lg">
               Create magical stories with AI-powered adventures, beautiful illustrations, and characters that come to life
             </p>
             {family && (
               <p className="text-white/60 text-sm mt-4">
-                ✨ Your stories are safely saved to the cloud ✨
+                ✨ {family.name} — stories safely saved to the cloud ✨{" "}
+                <button onClick={openFamilySettings} className="text-white/80 hover:text-white underline ml-1">
+                  Rename
+                </button>
               </p>
             )}
-            <p className="text-white/60 text-xs mt-2">
-              🤖 Powered by GPT-4 stories & DALL-E 3 images
-            </p>
+            <p className="text-white/60 text-xs mt-2">🤖 Powered by GPT-4 stories & DALL-E 3 images</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
-            <MagicalCard
-              onClick={() => go("characters")}
-              glowColor="rgba(255, 107, 107, 0.2)"
-            >
+            <MagicalCard onClick={() => go("characters")} glowColor="rgba(255, 107, 107, 0.2)">
               <div className="flex flex-col items-center text-center py-4 px-4">
                 <TommyIcon iconKey="myKids" alt="Add Your Family" />
-                <h3 className="text-xl font-bold text-white mt-3 mb-2">
-                  Add Your Family
-                </h3>
-                <p className="text-base text-white/80 leading-snug">
-                  Create characters inspired by your loved ones
-                </p>
+                <h3 className="text-xl font-bold text-white mt-3 mb-2">Add Your Family</h3>
+                <p className="text-base text-white/80 leading-snug">Create characters inspired by your loved ones</p>
                 {localCharacters.length > 0 && (
                   <p className="text-white/60 text-sm mt-2">
-                    {localCharacters.length} character{localCharacters.length !== 1 ? 's' : ''} added
+                    {localCharacters.length} character{localCharacters.length !== 1 ? "s" : ""} added
                   </p>
                 )}
               </div>
             </MagicalCard>
 
-            <MagicalCard
-              onClick={() => go("builder")}
-              glowColor="rgba(168, 85, 247, 0.2)"
-            >
+            <MagicalCard onClick={() => go("builder")} glowColor="rgba(168, 85, 247, 0.2)">
               <div className="flex flex-col items-center text-center py-4 px-4">
                 <TommyIcon iconKey="tommyDream" alt="Create Stories" />
-                <h3 className="text-xl font-bold text-white mt-3 mb-2">
-                  Create Stories
-                </h3>
-                <p className="text-base text-white/80 leading-snug">
-                  Choose themes and generate magical adventures
-                </p>
+                <h3 className="text-xl font-bold text-white mt-3 mb-2">Create Stories</h3>
+                <p className="text-base text-white/80 leading-snug">Choose themes and generate magical adventures</p>
               </div>
             </MagicalCard>
 
-            <MagicalCard
-              onClick={() => go("library")}
-              glowColor="rgba(59, 130, 246, 0.2)"
-            >
+            <MagicalCard onClick={() => go("library")} glowColor="rgba(59, 130, 246, 0.2)">
               <div className="flex flex-col items-center text-center py-4 px-4">
                 <TommyIcon iconKey="tommyRead" alt="Story Library" />
-                <h3 className="text-xl font-bold text-white mt-3 mb-2">
-                  Story Library
-                </h3>
-                <p className="text-base text-white/80 leading-snug">
-                  Revisit your magical collection
-                </p>
+                <h3 className="text-xl font-bold text-white mt-3 mb-2">Story Library</h3>
+                <p className="text-base text-white/80 leading-snug">Revisit your magical collection</p>
                 {localStories.length > 0 && (
                   <p className="text-white/60 text-sm mt-2">
-                    {localStories.length} stor{localStories.length !== 1 ? 'ies' : 'y'} saved
+                    {localStories.length} stor{localStories.length !== 1 ? "ies" : "y"} saved
                   </p>
                 )}
+              </div>
+            </MagicalCard>
+          </div>
+
+          <div className="flex gap-4 flex-wrap justify-center mt-8 mb-12">
+            <button
+              onClick={() => go("sharing")}
+              className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 py-3 rounded-full hover:bg-white/20 transition-colors"
+            >
+              🔗 Sharing
+            </button>
+            <button
+              onClick={() => go("community")}
+              className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 py-3 rounded-full hover:bg-white/20 transition-colors"
+            >
+              🌍 Community
+            </button>
+            <Link
+              href="/shared"
+              className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 py-3 rounded-full hover:bg-white/20 transition-colors"
+            >
+              📚 Shared with me
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "sharing") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <UserBar />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          <SharingPanel onBack={() => go("home")} />
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "community") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <UserBar />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          <CommunityFeed onBack={() => go("home")} />
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === "familySettings") {
+    return (
+      <div className="min-h-screen">
+        <AnimatedBackground />
+        <UserBar />
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          {showTommyHeader && <TommyHeaderLogo />}
+          <div className="max-w-xl mx-auto">
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">Family Settings</h1>
+            <MagicalCard>
+              <div className="p-8 space-y-4">
+                <label className="block text-white font-semibold">Family name</label>
+                <input
+                  type="text" value={familyNameInput} onChange={(e) => setFamilyNameInput(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 focus:border-white/50 focus:outline-none"
+                  placeholder="The Smith Family"
+                />
+                {error && <div className="text-red-300 text-center bg-red-500/20 p-3 rounded-lg">{error}</div>}
+                <div className="flex gap-3 justify-center pt-2">
+                  <button onClick={() => go("home")} className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveFamilyName} disabled={familySaveBusy || !familyNameInput.trim()}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 disabled:opacity-50"
+                  >
+                    {familySaveBusy ? "Saving…" : "Save"}
+                  </button>
+                </div>
               </div>
             </MagicalCard>
           </div>
@@ -693,13 +786,11 @@ export default function StoryLoom() {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 container mx-auto px-6 py-12">
           {showTommyHeader && <TommyHeaderLogo />}
-          
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
-              Manage Characters
-            </h1>
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">Manage Characters</h1>
 
             <div className="grid md:grid-cols-2 gap-8 mb-8">
               <MagicalCard>
@@ -707,16 +798,13 @@ export default function StoryLoom() {
                   <h2 className="text-2xl font-bold text-white mb-4">Add Family Member</h2>
                   <div className="space-y-4">
                     <input
-                      type="text"
-                      placeholder="Character name"
-                      value={newCharacterName}
-                      onChange={(e) => setNewCharacterName(e.target.value)}
+                      type="text" placeholder="Character name"
+                      value={newCharacterName} onChange={(e) => setNewCharacterName(e.target.value)}
                       className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30"
                       onKeyDown={(e) => e.key === "Enter" && addCharacter()}
                     />
                     <button
-                      onClick={addCharacter}
-                      disabled={!newCharacterName.trim()}
+                      onClick={addCharacter} disabled={!newCharacterName.trim()}
                       className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Add Character
@@ -730,16 +818,13 @@ export default function StoryLoom() {
                   <h2 className="text-2xl font-bold text-white mb-4">Add Guest</h2>
                   <div className="space-y-4">
                     <input
-                      type="text"
-                      placeholder="Guest name"
-                      value={newGuestName}
-                      onChange={(e) => setNewGuestName(e.target.value)}
+                      type="text" placeholder="Guest name"
+                      value={newGuestName} onChange={(e) => setNewGuestName(e.target.value)}
                       className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30"
                       onKeyDown={(e) => e.key === "Enter" && addGuest()}
                     />
                     <button
-                      onClick={addGuest}
-                      disabled={!newGuestName.trim()}
+                      onClick={addGuest} disabled={!newGuestName.trim()}
                       className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-3 rounded-lg font-semibold hover:from-green-600 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Add Guest
@@ -755,16 +840,11 @@ export default function StoryLoom() {
                   <h2 className="text-2xl font-bold text-white mb-4">Your Characters ({localCharacters.length})</h2>
                   <div className="grid gap-4">
                     {localCharacters.map((character) => (
-                      <div
-                        key={character.id}
-                        className="flex items-center justify-between p-4 bg-white/10 rounded-lg"
-                      >
+                      <div key={character.id} className="flex items-center justify-between p-4 bg-white/10 rounded-lg">
                         <div className="flex items-center gap-3">
                           <span className="text-white font-medium">{character.name}</span>
                           {character.isGuest && (
-                            <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded-full">
-                              Guest
-                            </span>
+                            <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded-full">Guest</span>
                           )}
                         </div>
                         <button
@@ -783,9 +863,7 @@ export default function StoryLoom() {
             {error && (
               <MagicalCard className="mt-4">
                 <div className="p-4">
-                  <div className="text-red-300 text-center bg-red-500/20 p-3 rounded-lg">
-                    {error}
-                  </div>
+                  <div className="text-red-300 text-center bg-red-500/20 p-3 rounded-lg">{error}</div>
                 </div>
               </MagicalCard>
             )}
@@ -808,57 +886,36 @@ export default function StoryLoom() {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 container mx-auto px-6 py-12">
           {showTommyHeader && <TommyHeaderLogo />}
-          
           <div className="max-w-5xl mx-auto">
             <h1 className="text-4xl font-bold text-white mb-12 text-center drop-shadow-2xl">
               How would you like to create your story?
             </h1>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <MagicalCard
-                onClick={startManualStory}
-                glowColor="rgba(34, 197, 94, 0.2)"
-              >
+              <MagicalCard onClick={startManualStory} glowColor="rgba(34, 197, 94, 0.2)">
                 <div className="flex flex-col items-center text-center py-4 px-4">
                   <TommyIcon iconKey="tommyWrite" alt="Build Your Own Story" />
-                  <h3 className="text-xl font-bold text-white mt-3 mb-2">
-                    Build Your Own Story
-                  </h3>
-                  <p className="text-base text-white/80 leading-snug">
-                    Write a tale and we'll create the cover
-                  </p>
+                  <h3 className="text-xl font-bold text-white mt-3 mb-2">Build Your Own Story</h3>
+                  <p className="text-base text-white/80 leading-snug">Write a tale and we'll create the cover</p>
                 </div>
               </MagicalCard>
 
-              <MagicalCard
-                onClick={startAIStory}
-                glowColor="rgba(168, 85, 247, 0.2)"
-              >
+              <MagicalCard onClick={startAIStory} glowColor="rgba(168, 85, 247, 0.2)">
                 <div className="flex flex-col items-center text-center py-4 px-4">
                   <TommyIcon iconKey="tommyAi" alt="AI Generate a Story" />
-                  <h3 className="text-xl font-bold text-white mt-3 mb-2">
-                    AI Generate a Story
-                  </h3>
-                  <p className="text-base text-white/80 leading-snug">
-                    Describe an idea and let Tommy spin the tale
-                  </p>
+                  <h3 className="text-xl font-bold text-white mt-3 mb-2">AI Generate a Story</h3>
+                  <p className="text-base text-white/80 leading-snug">Describe an idea and let Tommy spin the tale</p>
                 </div>
               </MagicalCard>
 
-              <MagicalCard
-                onClick={() => go("themeList")}
-                glowColor="rgba(236, 72, 153, 0.2)"
-              >
+              <MagicalCard onClick={() => go("themeList")} glowColor="rgba(236, 72, 153, 0.2)">
                 <div className="flex flex-col items-center text-center py-4 px-4">
                   <TommyIcon iconKey="tommyTheme" alt="Choose a Theme" />
-                  <h3 className="text-xl font-bold text-white mt-3 mb-2">
-                    Choose a Theme
-                  </h3>
-                  <p className="text-base text-white/80 leading-snug">
-                    Pick from six magical worlds
-                  </p>
+                  <h3 className="text-xl font-bold text-white mt-3 mb-2">Choose a Theme</h3>
+                  <p className="text-base text-white/80 leading-snug">Pick from six magical worlds</p>
                 </div>
               </MagicalCard>
             </div>
@@ -881,54 +938,33 @@ export default function StoryLoom() {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 container mx-auto px-6 py-12">
           {showTommyHeader && <TommyHeaderLogo />}
-          
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
-              Write Your Story
-            </h1>
-
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">Write Your Story</h1>
             <MagicalCard>
               <div className="p-8 space-y-6">
                 <div>
                   <label className="block text-white font-semibold mb-3">Story Title</label>
                   <input
-                    type="text"
-                    value={manualTitle}
-                    onChange={(e) => setManualTitle(e.target.value)}
+                    type="text" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)}
                     placeholder="Enter your story title..."
                     className="w-full p-4 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 text-lg focus:border-white/50 focus:outline-none"
                   />
                 </div>
-
                 <div>
                   <label className="block text-white font-semibold mb-3">Your Story</label>
                   <textarea
-                    value={manualContent}
-                    onChange={(e) => setManualContent(e.target.value)}
-                    placeholder="Write your magical story here..."
-                    rows={12}
+                    value={manualContent} onChange={(e) => setManualContent(e.target.value)}
+                    placeholder="Write your magical story here..." rows={12}
                     className="w-full p-4 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 text-lg leading-relaxed resize-none focus:border-white/50 focus:outline-none"
                   />
-                  <p className="text-white/60 text-sm mt-2">
-                    Characters: {manualContent.length} / Recommended: 500+ characters
-                  </p>
+                  <p className="text-white/60 text-sm mt-2">Characters: {manualContent.length} / Recommended: 500+ characters</p>
                 </div>
-
-                {error && (
-                  <div className="text-red-300 text-center bg-red-500/20 p-3 rounded-lg">
-                    {error}
-                  </div>
-                )}
-
+                {error && <div className="text-red-300 text-center bg-red-500/20 p-3 rounded-lg">{error}</div>}
                 <div className="flex gap-4 justify-center">
-                  <button
-                    onClick={() => go("builder")}
-                    className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
-                  >
-                    Back
-                  </button>
+                  <button onClick={() => go("builder")} className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors">Back</button>
                   <button
                     onClick={proceedManualToReview}
                     className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -949,54 +985,45 @@ export default function StoryLoom() {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 container mx-auto px-6 py-12">
           {showTommyHeader && <TommyHeaderLogo />}
-          
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
-              Describe Your Story
-            </h1>
-
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">Describe Your Story</h1>
             <MagicalCard>
               <div className="p-8 space-y-6">
                 <div>
                   <label className="block text-white font-semibold mb-3">What's your story about?</label>
                   <textarea
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="Describe your story idea... (e.g., 'A magical adventure where kids discover a secret garden that can grant wishes')"
-                    rows={4}
+                    value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="Describe your story idea..." rows={4}
                     className="w-full p-4 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 text-lg leading-relaxed resize-none focus:border-white/50 focus:outline-none"
                   />
                 </div>
-
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-white font-semibold mb-3">Genre</label>
                     <select
-                      value={aiGenre}
-                      onChange={(e) => setAiGenre(e.target.value)}
+                      value={aiGenre} onChange={(e) => setAiGenre(e.target.value)}
                       className="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30 focus:border-white/50 focus:outline-none"
                     >
-                      <option value="Adventure">Adventure</option>
-                      <option value="Fantasy">Fantasy</option>
-                      <option value="Friendship">Friendship</option>
-                      <option value="Mystery">Mystery</option>
-                      <option value="Comedy">Comedy</option>
-                      <option value="Educational">Educational</option>
+                      <option value="Adventure" className="text-black">Adventure</option>
+                      <option value="Fantasy" className="text-black">Fantasy</option>
+                      <option value="Friendship" className="text-black">Friendship</option>
+                      <option value="Mystery" className="text-black">Mystery</option>
+                      <option value="Comedy" className="text-black">Comedy</option>
+                      <option value="Educational" className="text-black">Educational</option>
                     </select>
                   </div>
-
                   <div>
                     <label className="block text-white font-semibold mb-3">Story Length</label>
                     <select
-                      value={aiLength}
-                      onChange={(e) => setAiLength(e.target.value)}
+                      value={aiLength} onChange={(e) => setAiLength(e.target.value)}
                       className="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30 focus:border-white/50 focus:outline-none"
                     >
-                      <option value="Short">Short (3-5 paragraphs)</option>
-                      <option value="Medium">Medium (6-8 paragraphs)</option>
-                      <option value="Long">Long (9-12 paragraphs)</option>
+                      <option value="Short" className="text-black">Short (3-5 paragraphs)</option>
+                      <option value="Medium" className="text-black">Medium (6-8 paragraphs)</option>
+                      <option value="Long" className="text-black">Long (9-12 paragraphs)</option>
                     </select>
                   </div>
                 </div>
@@ -1006,52 +1033,30 @@ export default function StoryLoom() {
                     <label className="block text-white font-semibold mb-3">Include Characters (Optional)</label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {localCharacters.map((character) => (
-                        <label
-                          key={character.id}
-                          className="flex items-center gap-2 p-3 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors"
-                        >
+                        <label key={character.id} className="flex items-center gap-2 p-3 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors">
                           <input
                             type="checkbox"
-                            checked={selectedCharacters.some(c => c.id === character.id)}
+                            checked={selectedCharacters.some((c) => c.id === character.id)}
                             onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedCharacters(prev => [...prev, character])
-                              } else {
-                                setSelectedCharacters(prev => prev.filter(c => c.id !== character.id))
-                              }
+                              if (e.target.checked) setSelectedCharacters((prev) => [...prev, character])
+                              else setSelectedCharacters((prev) => prev.filter((c) => c.id !== character.id))
                             }}
                             className="rounded"
                           />
                           <span className="text-white text-sm">
                             {character.name}
-                            {character.isGuest && (
-                              <span className="ml-1 text-blue-300">(Guest)</span>
-                            )}
+                            {character.isGuest && <span className="ml-1 text-blue-300">(Guest)</span>}
                           </span>
                         </label>
                       ))}
                     </div>
-                    {selectedCharacters.length > 0 && (
-                      <p className="text-white/60 text-sm mt-2">
-                        {selectedCharacters.length} character{selectedCharacters.length !== 1 ? 's' : ''} selected
-                      </p>
-                    )}
                   </div>
                 )}
 
-                {error && (
-                  <div className="text-red-300 text-center bg-red-500/20 p-3 rounded-lg">
-                    {error}
-                  </div>
-                )}
+                {error && <div className="text-red-300 text-center bg-red-500/20 p-3 rounded-lg">{error}</div>}
 
                 <div className="flex gap-4 justify-center">
-                  <button
-                    onClick={() => go("builder")}
-                    className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
-                  >
-                    Back
-                  </button>
+                  <button onClick={() => go("builder")} className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors">Back</button>
                   <button
                     onClick={proceedAIToReview}
                     className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1072,27 +1077,18 @@ export default function StoryLoom() {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 container mx-auto px-6 py-12">
-          <h1 className="text-4xl font-bold text-white mb-12 text-center drop-shadow-2xl">
-            Choose Your Adventure
-          </h1>
-
+          <h1 className="text-4xl font-bold text-white mb-12 text-center drop-shadow-2xl">Choose Your Adventure</h1>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {themes.map((theme) => (
               <MagicalCard
-                key={theme.id}
-                onClick={() => startThemeStory(theme)}
+                key={theme.id} onClick={() => startThemeStory(theme)}
                 glowColor={`${theme.colors.primary}40`}
                 className="overflow-hidden hover:scale-105"
               >
                 <div className="aspect-video relative">
-                  <img
-                    src={theme.image}
-                    alt={theme.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => console.error(`Theme image failed to load: ${theme.name}`, e)}
-                    onLoad={() => console.log(`Theme image loaded: ${theme.name}`)}
-                  />
+                  <img src={theme.image} alt={theme.name} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4">
                     <h3 className="text-xl font-bold text-white mb-2">{theme.name}</h3>
@@ -1102,14 +1098,8 @@ export default function StoryLoom() {
               </MagicalCard>
             ))}
           </div>
-
           <div className="text-center mt-8">
-            <button
-              onClick={() => go("builder")}
-              className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
-            >
-              Back
-            </button>
+            <button onClick={() => go("builder")} className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors">Back</button>
           </div>
         </div>
       </div>
@@ -1120,22 +1110,15 @@ export default function StoryLoom() {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 container mx-auto px-6 py-12">
           <div className="max-w-4xl mx-auto">
             {selectedTheme && (
               <div className="flex justify-center mb-8">
-                <img
-                  src={selectedTheme.image}
-                  alt={selectedTheme.name}
-                  className="w-full max-w-[400px] h-auto rounded-2xl drop-shadow-2xl"
-                />
+                <img src={selectedTheme.image} alt={selectedTheme.name} className="w-full max-w-[400px] h-auto rounded-2xl drop-shadow-2xl" />
               </div>
             )}
-
-            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
-              Prepare Your {selectedTheme?.name}
-            </h1>
-
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">Prepare Your {selectedTheme?.name}</h1>
             <MagicalCard>
               <div className="p-8 space-y-6">
                 {localCharacters.length > 0 ? (
@@ -1143,69 +1126,42 @@ export default function StoryLoom() {
                     <label className="block text-white font-semibold mb-4">Choose Characters for Your Story</label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {localCharacters.map((character) => (
-                        <label
-                          key={character.id}
-                          className="flex items-center gap-2 p-3 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors"
-                        >
+                        <label key={character.id} className="flex items-center gap-2 p-3 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors">
                           <input
                             type="checkbox"
-                            checked={selectedCharacters.some(c => c.id === character.id)}
+                            checked={selectedCharacters.some((c) => c.id === character.id)}
                             onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedCharacters(prev => [...prev, character])
-                              } else {
-                                setSelectedCharacters(prev => prev.filter(c => c.id !== character.id))
-                              }
+                              if (e.target.checked) setSelectedCharacters((prev) => [...prev, character])
+                              else setSelectedCharacters((prev) => prev.filter((c) => c.id !== character.id))
                             }}
                             className="rounded"
                           />
                           <span className="text-white text-sm">
                             {character.name}
-                            {character.isGuest && (
-                              <span className="ml-1 text-blue-300">(Guest)</span>
-                            )}
+                            {character.isGuest && <span className="ml-1 text-blue-300">(Guest)</span>}
                           </span>
                         </label>
                       ))}
                     </div>
-                    {selectedCharacters.length > 0 && (
-                      <p className="text-white/60 text-sm mt-2">
-                        {selectedCharacters.length} character{selectedCharacters.length !== 1 ? 's' : ''} selected
-                      </p>
-                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-white/80 mb-4">No characters added yet!</p>
-                    <button
-                      onClick={() => go("characters")}
-                      className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                    >
-                      Add Characters First
-                    </button>
+                    <button onClick={() => go("characters")} className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">Add Characters First</button>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-white font-semibold mb-3">
-                    What should this story be about? (Optional)
-                  </label>
+                  <label className="block text-white font-semibold mb-3">What should this story be about? (Optional)</label>
                   <textarea
-                    value={customPrompt}
-                    onChange={(e) => setCustomPrompt(e.target.value)}
-                    placeholder="Add your own ideas for the story..."
-                    rows={3}
+                    value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="Add your own ideas for the story..." rows={3}
                     className="w-full p-4 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 focus:border-white/50 focus:outline-none"
                   />
                 </div>
 
                 <div className="flex gap-4 justify-center">
-                  <button
-                    onClick={() => go("themeList")}
-                    className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
-                  >
-                    Back
-                  </button>
+                  <button onClick={() => go("themeList")} className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors">Back</button>
                   <button
                     onClick={proceedToReview}
                     className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
@@ -1225,54 +1181,42 @@ export default function StoryLoom() {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 container mx-auto px-6 py-12">
           {showTommyHeader && <TommyHeaderLogo />}
-          
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">
-              Review & Edit Prompts
-            </h1>
-            <p className="text-center text-white/60 mb-8">
-              ✨ Stories powered by GPT-4 • Images created with DALL-E 3 ✨
-            </p>
-
+            <h1 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-2xl">Review & Edit Prompts</h1>
+            <p className="text-center text-white/60 mb-8">✨ Stories powered by GPT-4 • Images created with DALL-E 3 ✨</p>
             <div className="space-y-6">
               <MagicalCard>
                 <div className="p-6">
                   <h2 className="text-xl font-bold text-white mb-3">Story Title</h2>
                   <input
-                    type="text"
-                    value={storyTitle}
-                    onChange={(e) => setStoryTitle(e.target.value)}
+                    type="text" value={storyTitle} onChange={(e) => setStoryTitle(e.target.value)}
                     className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 focus:border-white/50 focus:outline-none"
                   />
                 </div>
               </MagicalCard>
-
               <MagicalCard>
                 <div className="p-6">
                   <h2 className="text-xl font-bold text-white mb-3">Story Prompt (GPT-4)</h2>
                   <textarea
-                    value={storyPrompt}
-                    onChange={(e) => setStoryPrompt(e.target.value)}
+                    value={storyPrompt} onChange={(e) => setStoryPrompt(e.target.value)}
                     rows={4}
                     className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 resize-none focus:border-white/50 focus:outline-none"
                   />
                 </div>
               </MagicalCard>
-
               <MagicalCard>
                 <div className="p-6">
                   <h2 className="text-xl font-bold text-white mb-3">Image Prompt (DALL-E 3)</h2>
                   <textarea
-                    value={imagePrompt}
-                    onChange={(e) => setImagePrompt(e.target.value)}
+                    value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)}
                     rows={3}
                     className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/60 border border-white/30 resize-none focus:border-white/50 focus:outline-none"
                   />
                 </div>
               </MagicalCard>
-
               <div className="flex gap-4 justify-center">
                 <button
                   onClick={() => go(selectedTheme ? "prepare" : "builder")}
@@ -1299,9 +1243,9 @@ export default function StoryLoom() {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-12">
           {showTommyHeader && <TommyHeaderLogo />}
-          
           <div className="max-w-md mx-auto">
             <MagicalCard>
               <div className="p-12 text-center">
@@ -1309,7 +1253,10 @@ export default function StoryLoom() {
                 <h2 className="text-2xl font-bold text-white mb-4">{generationStage}</h2>
                 <p className="text-white/80">Tommy is working his magic...</p>
                 <div className="mt-4 w-full bg-white/20 rounded-full h-2">
-                  <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full animate-pulse" style={{width: generationStage.includes("Writing") ? "50%" : "90%"}} />
+                  <div
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full animate-pulse"
+                    style={{ width: generationStage.includes("Writing") ? "50%" : "90%" }}
+                  />
                 </div>
                 <p className="text-white/60 text-xs mt-4">
                   {generationStage.includes("GPT-4") && "🤖 Using GPT-4 for premium story quality"}
@@ -1317,17 +1264,11 @@ export default function StoryLoom() {
                 </p>
               </div>
             </MagicalCard>
-
             {error && (
               <MagicalCard className="mt-6">
                 <div className="p-6 text-center">
                   <div className="text-red-300 mb-4">{error}</div>
-                  <button
-                    onClick={() => go("review")}
-                    className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-                  >
-                    Try Again
-                  </button>
+                  <button onClick={() => go("review")} className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">Try Again</button>
                 </div>
               </MagicalCard>
             )}
@@ -1341,53 +1282,33 @@ export default function StoryLoom() {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 container mx-auto px-6 py-12">
           {showTommyHeader && <TommyHeaderLogo />}
-          
           <div className="max-w-4xl mx-auto">
             <MagicalCard>
               <div className="p-8">
                 <div className="text-center mb-8">
-                  <img
-                    src={currentStory.imageUrl}
-                    alt={currentStory.title}
-                    className="w-full max-w-md mx-auto rounded-lg shadow-2xl mb-6"
-                  />
+                  <img src={currentStory.imageUrl} alt={currentStory.title} className="w-full max-w-md mx-auto rounded-lg shadow-2xl mb-6" />
                   <h1 className="text-3xl font-bold text-white mb-4">{currentStory.title}</h1>
                   <div className="flex items-center justify-center gap-2 text-white/60 text-sm">
                     {currentStory.storyType === "manual" && "✍️ Written by You"}
                     {currentStory.storyType === "ai" && "🤖 AI Generated"}
                     {currentStory.storyType === "theme" && "🎨 Theme Story"}
                     {currentStory.characters.length > 0 && (
-                      <span>• Featuring {currentStory.characters.map(c => c.name).join(", ")}</span>
+                      <span>• Featuring {currentStory.characters.map((c) => c.name).join(", ")}</span>
                     )}
                   </div>
-                  <p className="text-white/40 text-xs mt-2">
-                    Generated with GPT-4 & DALL-E 3
-                  </p>
+                  <p className="text-white/40 text-xs mt-2">Generated with GPT-4 & DALL-E 3</p>
                 </div>
-
                 <div className="prose prose-invert prose-lg max-w-none">
-                  {currentStory.content.split('\n\n').map((paragraph, index) => (
-                    <p key={index} className="text-white/90 leading-relaxed mb-4 text-lg">
-                      {paragraph}
-                    </p>
+                  {currentStory.content.split("\n\n").map((paragraph, index) => (
+                    <p key={index} className="text-white/90 leading-relaxed mb-4 text-lg">{paragraph}</p>
                   ))}
                 </div>
-
                 <div className="flex gap-4 justify-center mt-8 flex-wrap">
-                  <button
-                    onClick={() => go("home")}
-                    className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
-                  >
-                    Home
-                  </button>
-                  <button
-                    onClick={() => go("library")}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                  >
-                    Library
-                  </button>
+                  <button onClick={() => go("home")} className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors">Home</button>
+                  <button onClick={() => go("library")} className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">Library</button>
                   <button
                     onClick={() => go("builder")}
                     className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
@@ -1407,13 +1328,11 @@ export default function StoryLoom() {
     return (
       <div className="min-h-screen">
         <AnimatedBackground />
+        <UserBar />
         <div className="relative z-10 container mx-auto px-6 py-12">
           {showTommyHeader && <TommyHeaderLogo />}
-          
           <div className="max-w-6xl mx-auto">
-            <h1 className="text-4xl font-bold text-white mb-12 text-center drop-shadow-2xl">
-              Your Story Library
-            </h1>
+            <h1 className="text-4xl font-bold text-white mb-12 text-center drop-shadow-2xl">Your Story Library</h1>
 
             {localStories.length === 0 ? (
               <MagicalCard>
@@ -1433,38 +1352,29 @@ export default function StoryLoom() {
               <>
                 <div className="text-center mb-8">
                   <p className="text-white/80">
-                    {localStories.length} stor{localStories.length !== 1 ? 'ies' : 'y'} saved permanently to your cloud library
+                    {localStories.length} stor{localStories.length !== 1 ? "ies" : "y"} saved permanently to your cloud library
                   </p>
-                  <p className="text-white/60 text-xs mt-2">
-                    All powered by GPT-4 & DALL-E 3
-                  </p>
+                  <p className="text-white/60 text-xs mt-2">All powered by GPT-4 & DALL-E 3</p>
                 </div>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {localStories.map((story) => (
                     <MagicalCard key={story.id} className="overflow-hidden hover:scale-[1.02]">
                       <div className="aspect-[3/4] relative">
-                        <img
-                          src={story.imageUrl}
-                          alt={story.title}
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={story.imageUrl} alt={story.title} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                         <div className="absolute bottom-0 left-0 right-0 p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-xs text-white/60">
-                              {story.storyType === "manual" ? "✍️ Written" : 
-                               story.storyType === "ai" ? "🤖 AI Generated" : 
-                               "🎨 Theme Story"}
+                              {story.storyType === "manual" ? "✍️ Written" :
+                                story.storyType === "ai" ? "🤖 AI Generated" :
+                                "🎨 Theme Story"}
                             </span>
-                            <span className="text-xs text-white/40">
-                              {new Date(story.createdAt).toLocaleDateString()}
-                            </span>
+                            <span className="text-xs text-white/40">{new Date(story.createdAt).toLocaleDateString()}</span>
                           </div>
                           <h3 className="text-white font-bold text-lg mb-2 line-clamp-2">{story.title}</h3>
                           {story.characters.length > 0 && (
                             <p className="text-white/60 text-xs mb-3">
-                              Featuring: {story.characters.slice(0, 2).map(c => c.name).join(", ")}
+                              Featuring: {story.characters.slice(0, 2).map((c) => c.name).join(", ")}
                               {story.characters.length > 2 && ` +${story.characters.length - 2} more`}
                             </p>
                           )}
@@ -1491,12 +1401,7 @@ export default function StoryLoom() {
             )}
 
             <div className="text-center mt-8">
-              <button
-                onClick={() => go("home")}
-                className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
-              >
-                Back to Home
-              </button>
+              <button onClick={() => go("home")} className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors">Back to Home</button>
             </div>
           </div>
         </div>
