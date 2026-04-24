@@ -1,7 +1,8 @@
 // src/app/community/books/page.tsx
 //
-// Lists all approved community books. If the current user is an admin, shows
-// an "Upload a book" panel at the top.
+// Community book library.
+// - Signed-in users: can see approved books and submit their own (pending).
+// - Admins: additionally see the moderation panel with pending, flagged, all.
 
 "use client"
 
@@ -9,6 +10,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { useSupabase } from "@/lib/useSupabase"
 import { useCommunityBooks, type CommunityBook } from "@/lib/useCommunityBooks"
+import AdminBookModerationPanel from "@/components/AdminBookModerationPanel"
 
 export default function CommunityBooksPage() {
   const { user, isAdmin, session } = useSupabase()
@@ -45,20 +47,18 @@ export default function CommunityBooksPage() {
                 : "Books will appear here once they're uploaded"}
             </p>
           </div>
-          <Link
-            href="/"
-            className="text-white/80 hover:text-white underline"
-          >
+          <Link href="/" className="text-white/80 hover:text-white underline">
             ← Home
           </Link>
         </div>
 
-        {isAdmin && (
-          <AdminUploadPanel
-            accessToken={session?.access_token}
-            onUploaded={reload}
-          />
-        )}
+        {isAdmin && <AdminBookModerationPanel onChange={reload} />}
+
+        <SubmissionPanel
+          accessToken={session?.access_token}
+          isAdmin={isAdmin}
+          onUploaded={reload}
+        />
 
         {error && (
           <div className="bg-red-500/20 border border-red-400/30 text-red-100 rounded-lg p-4 mb-8">
@@ -70,10 +70,12 @@ export default function CommunityBooksPage() {
           <div className="text-center py-12 text-white/60">Loading books…</div>
         ) : books.length === 0 ? (
           <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-12 text-center">
-            <p className="text-white/80">No books yet.</p>
-            {isAdmin && (
-              <p className="text-white/60 text-sm mt-2">Upload one above to get started.</p>
-            )}
+            <p className="text-white/80">No approved books yet.</p>
+            <p className="text-white/60 text-sm mt-2">
+              {isAdmin
+                ? "Upload one above to get started."
+                : "Submit one above for review."}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -96,11 +98,7 @@ function BookCard({ book }: { book: CommunityBook }) {
       <div className="aspect-[2/3] bg-white/5 relative overflow-hidden">
         {book.cover_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={book.cover_url}
-            alt={book.title}
-            className="w-full h-full object-cover"
-          />
+          <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-6xl opacity-30">📖</span>
@@ -112,19 +110,19 @@ function BookCard({ book }: { book: CommunityBook }) {
       </div>
       <div className="p-4">
         <h3 className="text-white font-bold leading-tight line-clamp-2">{book.title}</h3>
-        {book.author && (
-          <p className="text-white/60 text-sm mt-1">{book.author}</p>
-        )}
+        {book.author && <p className="text-white/60 text-sm mt-1">{book.author}</p>}
       </div>
     </Link>
   )
 }
 
-function AdminUploadPanel({
+function SubmissionPanel({
   accessToken,
+  isAdmin,
   onUploaded,
 }: {
   accessToken: string | undefined
+  isAdmin: boolean
   onUploaded: () => void
 }) {
   const [open, setOpen] = useState(false)
@@ -159,7 +157,11 @@ function AdminUploadPanel({
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? "Upload failed")
 
-      setOkMsg(`Uploaded "${data.book.title}"`)
+      setOkMsg(
+        isAdmin
+          ? `Uploaded "${data.book.title}"`
+          : `Submitted "${data.book.title}" for review. An admin will check it shortly.`
+      )
       setTitle(""); setAuthor(""); setDescription(""); setFile(null); setCover(null)
       onUploaded()
     } catch (e: any) {
@@ -169,6 +171,8 @@ function AdminUploadPanel({
     }
   }
 
+  const heading = isAdmin ? "📤 Upload a book" : "📤 Submit a book for review"
+
   return (
     <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 mb-8">
       <button
@@ -176,13 +180,19 @@ function AdminUploadPanel({
         className="w-full text-left flex items-center justify-between text-white"
       >
         <span className="text-lg font-semibold">
-          📤 Upload a book {open ? "" : "(admin)"}
+          {heading}
         </span>
         <span className="text-2xl">{open ? "−" : "+"}</span>
       </button>
 
       {open && (
         <div className="mt-6 space-y-4">
+          {!isAdmin && (
+            <div className="bg-blue-500/10 border border-blue-400/30 text-blue-100 rounded-lg p-3 text-sm">
+              Your submission will be reviewed by an admin before it appears in the library.
+              Please only submit books you have the right to share.
+            </div>
+          )}
           <div>
             <label className="block text-white/90 text-sm mb-1">Title *</label>
             <input
@@ -248,7 +258,7 @@ function AdminUploadPanel({
               disabled={busy || !title.trim() || !file}
               className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {busy ? "Uploading…" : "Upload book"}
+              {busy ? "Uploading…" : (isAdmin ? "Upload book" : "Submit for review")}
             </button>
           </div>
         </div>
