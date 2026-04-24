@@ -1,6 +1,9 @@
 // src/app/api/community-books/upload/route.ts
 //
-// Admin-only: upload a community book (PDF or EPUB) plus optional cover image.
+// Signed-in users upload a community book (PDF or EPUB) plus optional cover.
+// - Admin uploads: is_approved = true (visible immediately).
+// - Non-admin uploads: is_approved = false (pending admin review).
+//
 // Saves file(s) to Supabase Storage bucket `community-books` at
 // {book_id}/original.{ext} and {book_id}/cover.{ext}, then creates a row.
 //
@@ -33,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Server env vars missing" }, { status: 500 })
   }
 
-  // Authenticate the caller with their JWT, confirm they're admin.
+  // Any signed-in user can upload. Admin status determines auto-approval.
   const authHeader = req.headers.get("authorization") ?? ""
   const token = authHeader.replace(/^Bearer\s+/i, "")
   if (!token) return NextResponse.json({ error: "Not signed in" }, { status: 401 })
@@ -53,9 +56,7 @@ export async function POST(req: NextRequest) {
     .select("is_admin")
     .eq("id", user.id)
     .maybeSingle()
-  if (!profile?.is_admin) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 })
-  }
+  const isAdmin = !!profile?.is_admin
 
   // Parse multipart form
   let form: FormData
@@ -96,13 +97,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Use service role for Storage writes + DB insert — simpler than juggling
-  // Storage RLS with the user's JWT. We've already verified admin above.
+  // Service role for storage writes + DB insert. We've already auth'd the user.
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
-  // Generate UUID client-side so we can use it in the storage path BEFORE insert
   const bookId = crypto.randomUUID()
   const filePath = `${bookId}/original.${fileType}`
 
@@ -125,12 +124,8 @@ export async function POST(req: NextRequest) {
   let coverPath: string | null = null
   if (cover instanceof File && cover.size > 0) {
     if (!cover.type.startsWith("image/")) {
-      // clean up the file we just uploaded
       await admin.storage.from("community-books").remove([filePath])
-      return NextResponse.json(
-        { error: "Cover must be an image" },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Cover must be an image" }, { status: 400 })
     }
     const coverExt =
       cover.type === "image/png" ? "png" :
@@ -153,9 +148,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Create a 1-year signed URL for the cover so the list page can render it
-  // without needing another round-trip. Files get signed URLs on demand from
-  // the reader route (shorter TTL) for stronger access control.
+  // 1-year signed URL for cover
   let coverSignedUrl: string | null = null
   if (coverPath) {
     const { data: signed } = await admin.storage
@@ -164,7 +157,6 @@ export async function POST(req: NextRequest) {
     coverSignedUrl = signed?.signedUrl ?? null
   }
 
-  // Insert DB row
   const { data: inserted, error: insertErr } = await admin
     .from("community_books")
     .insert({
@@ -178,13 +170,14 @@ export async function POST(req: NextRequest) {
       file_type: fileType,
       file_size_bytes: file.size,
       uploaded_by: user.id,
-      is_approved: true, // admin uploads are auto-approved
+      is_approved: isAdmin,     // admins: auto-approved; users: pending
+      reviewed_by: isAdmin ? user.id : null,
+      reviewed_at: isAdmin ? new Date().toISOString() : null,
     })
     .select()
     .single()
 
   if (insertErr) {
-    // Clean up storage on DB failure
     const toRemove = [filePath]
     if (coverPath) toRemove.push(coverPath)
     await admin.storage.from("community-books").remove(toRemove)
