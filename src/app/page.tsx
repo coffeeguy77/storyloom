@@ -7,7 +7,7 @@ import { buildStoryPrompt, buildStoryTitle } from "@/lib/storyPrompts"
 import { useSupabase } from "@/lib/useSupabase"
 import AuthGate from "@/components/AuthGate"
 import SharingPanel from "@/components/SharingPanel"
-import CommunityFeed from "@/components/CommunityFeed"
+
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -724,18 +724,7 @@ function StoryLoom() {
     )
   }
 
-  if (screen === "community") {
-    return (
-      <div className="min-h-screen">
-        <AnimatedBackground />
-        <UserBar />
-        <div className="relative z-10 container mx-auto px-6 py-12">
-          {showTommyHeader && <TommyHeaderLogo />}
-          <CommunityFeed onBack={() => go("home")} />
-        </div>
-      </div>
-    )
-  }
+
 
   if (screen === "familySettings") {
     return (
