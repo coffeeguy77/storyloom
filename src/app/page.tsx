@@ -650,7 +650,7 @@ function StoryLoom() {
             <p className="text-white/60 text-xs mt-2">🤖 Powered by GPT-4 stories & DALL-E 3 images</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mb-12">
             <MagicalCard onClick={() => go("characters")} glowColor="rgba(255, 107, 107, 0.2)">
               <div className="flex flex-col items-center text-center py-4 px-4">
                 <TommyIcon iconKey="myKids" alt="Add Your Family" />
@@ -674,8 +674,8 @@ function StoryLoom() {
 
             <MagicalCard onClick={() => go("library")} glowColor="rgba(59, 130, 246, 0.2)">
               <div className="flex flex-col items-center text-center py-4 px-4">
-                <TommyIcon iconKey="tommyRead" alt="Story Library" />
-                <h3 className="text-xl font-bold text-white mt-3 mb-2">Story Library</h3>
+                <TommyIcon iconKey="tommyRead" alt="My Library" />
+                <h3 className="text-xl font-bold text-white mt-3 mb-2">My Library</h3>
                 <p className="text-base text-white/80 leading-snug">Revisit your magical collection</p>
                 {localStories.length > 0 && (
                   <p className="text-white/60 text-sm mt-2">
@@ -684,26 +684,19 @@ function StoryLoom() {
                 )}
               </div>
             </MagicalCard>
-          </div>
 
-          <div className="flex gap-4 flex-wrap justify-center mt-8 mb-12">
-            <button
-              onClick={() => go("sharing")}
-              className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 py-3 rounded-full hover:bg-white/20 transition-colors"
-            >
-              🔗 Sharing
-            </button>
-            <button
-              onClick={() => go("community")}
-              className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 py-3 rounded-full hover:bg-white/20 transition-colors"
-            >
-              🌍 Community
-            </button>
-            <Link
-              href="/shared"
-              className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 py-3 rounded-full hover:bg-white/20 transition-colors"
-            >
-              📚 Shared with me
+            <Link href="/community" className="block h-full">
+              <MagicalCard glowColor="rgba(34, 197, 94, 0.2)" className="h-full cursor-pointer hover:scale-[1.02] hover:-translate-y-1 transition-all duration-500 ease-out">
+                <div className="flex flex-col items-center text-center py-4 px-4">
+                  <img
+                    src="https://res.cloudinary.com/dzx6x1hou/image/upload/v1777130801/tommy-community.png"
+                    alt="Community Library"
+                    className="w-full max-w-[272px] h-auto object-contain drop-shadow-xl"
+                  />
+                  <h3 className="text-xl font-bold text-white mt-3 mb-2">Community Library</h3>
+                  <p className="text-base text-white/80 leading-snug">Books and stories shared by everyone</p>
+                </div>
+              </MagicalCard>
             </Link>
           </div>
         </div>
