@@ -1,19 +1,15 @@
 // src/app/community/page.tsx
 //
 // Unified Community page. Five tabs:
-//   Books           — approved community books (EPUB/PDF)
-//   Stories         — approved community stories
-//   My Submissions  — my pending + approved items (both types)
-//   Upload          — upload a book (everyone; non-admin lands pending)
-//   Moderate        — admin-only pending + flagged + all queue
+//   Books | Stories | My Submissions | Upload | Moderate (admin only)
 //
-// Publishing a story is NOT done from here; it lives on the story reading
-// screen ("Publish to Community" button).
+// Story schema uses author_id, show_author, status (pending/approved/rejected),
+// with display name resolved via profiles join (author_display_name).
 
 "use client"
 
 import Link from "next/link"
-import { useMemo, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useSupabase } from "@/lib/useSupabase"
 import { useCommunity, type CommunityBook, type CommunityStory, type CommunityItem } from "@/lib/useCommunity"
 import { extractEpubMetadata } from "@/lib/epubMetadata"
@@ -58,12 +54,11 @@ export default function CommunityPage() {
           </Link>
         </div>
 
-        {/* Tabs */}
         <div className="flex flex-wrap gap-2 mb-8">
-          <TabButton active={tab === "books"}  onClick={() => setTab("books")}>Books</TabButton>
+          <TabButton active={tab === "books"} onClick={() => setTab("books")}>Books</TabButton>
           <TabButton active={tab === "stories"} onClick={() => setTab("stories")}>Stories</TabButton>
-          <TabButton active={tab === "mine"}    onClick={() => setTab("mine")}>My Submissions</TabButton>
-          <TabButton active={tab === "upload"}  onClick={() => setTab("upload")}>Upload</TabButton>
+          <TabButton active={tab === "mine"} onClick={() => setTab("mine")}>My Submissions</TabButton>
+          <TabButton active={tab === "upload"} onClick={() => setTab("upload")}>Upload</TabButton>
           {isAdmin && (
             <TabButton
               active={tab === "moderate"}
@@ -81,10 +76,10 @@ export default function CommunityPage() {
           </div>
         )}
 
-        {tab === "books"    && <BooksTab books={community.books} loading={community.isLoading} />}
-        {tab === "stories"  && <StoriesTab stories={community.stories} loading={community.isLoading} />}
-        {tab === "mine"     && <MyTab items={community.mySubmissions} loading={community.isLoading} onChange={community.reload} />}
-        {tab === "upload"   && <UploadTab isAdmin={isAdmin} onUploaded={community.reload} />}
+        {tab === "books" && <BooksTab books={community.books} loading={community.isLoading} />}
+        {tab === "stories" && <StoriesTab stories={community.stories} loading={community.isLoading} />}
+        {tab === "mine" && <MyTab items={community.mySubmissions} loading={community.isLoading} onChange={community.reload} />}
+        {tab === "upload" && <UploadTab isAdmin={isAdmin} onUploaded={community.reload} />}
         {tab === "moderate" && isAdmin && (
           <ModerateTab
             pendingBooks={community.pendingBooks}
@@ -100,13 +95,11 @@ export default function CommunityPage() {
 }
 
 // ============================================================================
-// TAB: Books (approved community books)
+// TAB: Books
 // ============================================================================
 function BooksTab({ books, loading }: { books: CommunityBook[]; loading: boolean }) {
   if (loading) return <Loading />
-  if (books.length === 0) {
-    return <EmptyState msg="No books yet." sub="Upload one from the Upload tab." />
-  }
+  if (books.length === 0) return <EmptyState msg="No books yet." sub="Upload one from the Upload tab." />
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       {books.map((b) => <BookCard key={b.id} book={b} />)}
@@ -142,13 +135,11 @@ function BookCard({ book }: { book: CommunityBook }) {
 }
 
 // ============================================================================
-// TAB: Stories (approved community stories)
+// TAB: Stories
 // ============================================================================
 function StoriesTab({ stories, loading }: { stories: CommunityStory[]; loading: boolean }) {
   if (loading) return <Loading />
-  if (stories.length === 0) {
-    return <EmptyState msg="No stories published yet." sub="Publish one from any of your stories." />
-  }
+  if (stories.length === 0) return <EmptyState msg="No stories published yet." sub="Publish one from any of your stories." />
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       {stories.map((s) => <StoryCard key={s.id} story={s} />)}
@@ -171,11 +162,11 @@ function StoryCard({ story }: { story: CommunityStory }) {
       </div>
       <div className="p-4">
         <h3 className="text-white font-bold leading-tight line-clamp-2">{story.title}</h3>
-        {story.show_display_name && story.publisher_display_name && (
-          <p className="text-white/60 text-sm mt-1">by {story.publisher_display_name}</p>
+        {story.show_author && story.author_display_name && (
+          <p className="text-white/60 text-sm mt-1">by {story.author_display_name}</p>
         )}
         <p className="text-white/60 text-xs mt-2">
-          {new Date(story.created_at).toLocaleDateString()} · ⭐ {story.favourite_count}
+          {new Date(story.created_at).toLocaleDateString()}
         </p>
       </div>
     </div>
@@ -183,7 +174,7 @@ function StoryCard({ story }: { story: CommunityStory }) {
 }
 
 // ============================================================================
-// TAB: My Submissions (both types, badges)
+// TAB: My Submissions
 // ============================================================================
 function MyTab({
   items, loading, onChange,
@@ -201,7 +192,7 @@ function MyTab({
 
   async function withdraw(item: CommunityItem) {
     if (!session?.access_token) return
-    const name = item.kind === "book" ? item.title : item.title
+    const name = item.title
     if (!confirm(`Withdraw "${name}" from the community?`)) return
     try {
       const url = item.kind === "book"
@@ -251,11 +242,11 @@ function StatusPill({ item }: { item: CommunityItem }) {
   let label = "", colour = ""
   if (item.kind === "book") {
     if (item.is_approved) { label = "Approved"; colour = "bg-green-500/20 text-green-200" }
-    else                  { label = "Pending review"; colour = "bg-yellow-500/20 text-yellow-200" }
+    else { label = "Pending review"; colour = "bg-yellow-500/20 text-yellow-200" }
   } else {
-    if (item.status === "approved")      { label = "Approved"; colour = "bg-green-500/20 text-green-200" }
+    if (item.status === "approved") { label = "Approved"; colour = "bg-green-500/20 text-green-200" }
     else if (item.status === "rejected") { label = "Rejected"; colour = "bg-red-500/20 text-red-200" }
-    else                                 { label = "Pending review"; colour = "bg-yellow-500/20 text-yellow-200" }
+    else { label = "Pending review"; colour = "bg-yellow-500/20 text-yellow-200" }
   }
   return (
     <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs ${colour}`}>
@@ -265,7 +256,7 @@ function StatusPill({ item }: { item: CommunityItem }) {
 }
 
 // ============================================================================
-// TAB: Upload (book file upload + EPUB metadata)
+// TAB: Upload
 // ============================================================================
 function UploadTab({ isAdmin, onUploaded }: { isAdmin: boolean; onUploaded: () => void }) {
   const { client, session } = useSupabase()
@@ -466,7 +457,7 @@ function UploadTab({ isAdmin, onUploaded }: { isAdmin: boolean; onUploaded: () =
 }
 
 // ============================================================================
-// TAB: Moderate (admin-only: pending + flagged + all)
+// TAB: Moderate
 // ============================================================================
 function ModerateTab({
   pendingBooks, pendingStories, flaggedBooks, allBooks, onChange,
@@ -542,19 +533,19 @@ function ModerateTab({
                 actions={
                   <>
                     <GreenBtn onClick={() => bookApprove(b.id)}>Approve</GreenBtn>
-                    <RedBtn   onClick={() => bookDelete(b.id, b.title)}>Reject</RedBtn>
+                    <RedBtn onClick={() => bookDelete(b.id, b.title)}>Reject</RedBtn>
                   </>
                 }
               />
             ))}
             {pendingStories.map((s) => (
               <ModRow key={`ps-${s.id}`} kind="story" title={s.title}
-                subtitle={s.publisher_display_name ? `by ${s.publisher_display_name}` : "Anonymous"}
+                subtitle={s.show_author && s.author_display_name ? `by ${s.author_display_name}` : "Anonymous"}
                 cover={s.image_url}
                 actions={
                   <>
                     <GreenBtn onClick={() => storyApprove(s.id)}>Approve</GreenBtn>
-                    <RedBtn   onClick={() => storyReject(s.id, s.title)}>Reject</RedBtn>
+                    <RedBtn onClick={() => storyReject(s.id, s.title)}>Reject</RedBtn>
                   </>
                 }
               />
@@ -572,9 +563,7 @@ function ModerateTab({
               <ModRow key={b.id} kind="book" title={b.title}
                 subtitle={`${b.author ?? "Unknown author"} · 🚩 ${b.unresolved_flag_count}`}
                 cover={b.cover_url}
-                actions={
-                  <RedBtn onClick={() => bookDelete(b.id, b.title)}>Remove</RedBtn>
-                }
+                actions={<RedBtn onClick={() => bookDelete(b.id, b.title)}>Remove</RedBtn>}
               />
             ))}
           </div>
@@ -590,9 +579,7 @@ function ModerateTab({
               <ModRow key={b.id} kind="book" title={b.title}
                 subtitle={`${b.author ?? "Unknown author"} · ${b.file_type.toUpperCase()}`}
                 cover={b.cover_url}
-                actions={
-                  <RedBtn onClick={() => bookDelete(b.id, b.title)}>Delete</RedBtn>
-                }
+                actions={<RedBtn onClick={() => bookDelete(b.id, b.title)}>Delete</RedBtn>}
               />
             ))}
           </div>
