@@ -1,10 +1,8 @@
 // src/app/api/community-posts/publish/route.ts
 //
 // Publish one of the caller's own stories to the community feed.
-// Creates a community_posts row with status='pending'.
-//
-// POST /api/community-posts/publish
-// Body: { storyId: string, showDisplayName: boolean }
+// Creates a community_posts row with status='pending' using the actual
+// schema: author_id, show_author, story_id, title, content, image_url.
 
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
@@ -38,24 +36,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Body must be JSON" }, { status: 400 })
   }
   const storyId = body?.storyId
-  const showDisplayName = !!body?.showDisplayName
+  const showAuthor = !!body?.showAuthor
   if (!storyId) {
     return NextResponse.json({ error: "storyId required" }, { status: 400 })
   }
 
-  // Verify the story belongs to the caller (RLS on stories will enforce this
-  // via the owner-all policy; a non-owner select returns null)
+  // Verify the story belongs to the caller (RLS on stories enforces this).
   const { data: story, error: storyErr } = await client
     .from("stories")
-    .select("id, title, content, image_url, theme_id, characters, family_id")
+    .select("id, title, content, image_url")
     .eq("id", storyId)
     .maybeSingle()
   if (storyErr || !story) {
     return NextResponse.json({ error: "Story not found or not yours" }, { status: 404 })
   }
-
-  const { data: profile } = await client
-    .from("profiles").select("display_name").eq("id", user.id).maybeSingle()
 
   // Prevent duplicate publishes
   const { data: existing } = await client
@@ -74,11 +68,8 @@ export async function POST(req: NextRequest) {
       title: story.title,
       content: story.content,
       image_url: story.image_url,
-      theme_id: story.theme_id,
-      characters: story.characters,
-      published_by: user.id,
-      publisher_display_name: profile?.display_name ?? null,
-      show_display_name: showDisplayName,
+      author_id: user.id,
+      show_author: showAuthor,
       status: "pending",
     })
     .select()
