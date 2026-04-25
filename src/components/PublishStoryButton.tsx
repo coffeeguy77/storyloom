@@ -1,8 +1,8 @@
 // src/components/PublishStoryButton.tsx
 //
-// Lives on the story reading screen for the story's owner. Clicking opens
-// a small dialog that lets the user choose whether to show their display
-// name and confirms the submission. The story lands pending admin review.
+// Lives on the story reading screen for the story's owner. Submits to
+// community_posts as status='pending' with show_author matching the user's
+// choice.
 
 "use client"
 
@@ -26,7 +26,7 @@ export default function PublishStoryButton({ storyId }: { storyId: string }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ storyId, showDisplayName: showName }),
+        body: JSON.stringify({ storyId, showAuthor: showName }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -68,11 +68,37 @@ export default function PublishStoryButton({ storyId }: { storyId: string }) {
                   Show my name: {profile?.display_name ? `"${profile.display_name}"` : "(no display name set)"}
                 </p>
                 <p className="text-white/60 text-xs mt-0.5">
-                  Uncheck to publish anonymously. Characters stay private either way.
+                  Uncheck to publish anonymously.
                 </p>
               </div>
             </label>
 
+            {msg && (
+              <div className={`mt-3 text-sm rounded-lg p-2 ${
+                msg.type === "ok"
+                  ? "bg-green-500/20 text-green-100 border border-green-400/30"
+                  : "bg-red-500/20 text-red-100 border border-red-400/30"
+              }`}>
+                {msg.text}
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end mt-4">
+              <button onClick={() => setOpen(false)} disabled={busy}
+                className="px-4 py-2 text-white/80 hover:text-white text-sm disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={submit} disabled={busy || msg?.type === "ok"}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
+                {busy ? "Submitting…" : "Submit for review"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
             {msg && (
               <div className={`mt-3 text-sm rounded-lg p-2 ${
                 msg.type === "ok"
