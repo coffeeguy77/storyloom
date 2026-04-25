@@ -1,7 +1,11 @@
 // src/lib/useCommunity.ts
 //
 // Unified community data: approved books + stories, my submissions, and
-// admin pending queues. One hook, everything you need.
+// admin pending queues.
+//
+// Schema note: community_posts columns actually in use:
+//   id, story_id, author_id, show_author, status, moderation_note,
+//   title, content, image_url, submitted_at, reviewed_at, reviewed_by
 
 "use client"
 
@@ -25,17 +29,16 @@ export type CommunityBook = {
 
 export type CommunityStory = {
   id: string
+  story_id: string
   title: string
   content: string
   image_url: string | null
-  theme_id: string | null
-  characters: any
   status: "pending" | "approved" | "rejected"
-  published_by: string | null
-  publisher_display_name: string | null
-  show_display_name: boolean
-  favourite_count: number
-  created_at: string
+  author_id: string | null
+  show_author: boolean
+  author_display_name: string | null  // resolved client-side from profiles
+  submitted_at: string
+  created_at: string                  // alias of submitted_at for sorting convenience
   kind: "story"
 }
 
@@ -59,7 +62,7 @@ export function useCommunity() {
     if (!client || !user) return
     setIsLoading(true); setError(null)
     try {
-      // Approved books (public feed)
+      // ------ Books: approved ------
       const booksRes = await client
         .from("community_books")
         .select("*")
@@ -71,55 +74,39 @@ export function useCommunity() {
       }))
       setBooks(approvedBooks)
 
-      // Approved stories from the community_feed view (from 03-community.sql)
+      // ------ Stories: approved ------
       const storiesRes = await client
-        .from("community_feed")
+        .from("community_posts")
         .select("*")
-        .order("created_at", { ascending: false })
-      // View may not exist yet for some projects; fall back to community_posts
-      let approvedStories: CommunityStory[] = []
-      if (storiesRes.error) {
-        const fallback = await client
-          .from("community_posts")
-          .select("*")
-          .eq("status", "approved")
-          .order("created_at", { ascending: false })
-        if (!fallback.error) {
-          approvedStories = ((fallback.data ?? []) as any[]).map((s) => ({
-            ...s, kind: "story" as const, favourite_count: s.favourite_count ?? 0,
-          }))
-        }
-      } else {
-        approvedStories = ((storiesRes.data ?? []) as any[]).map((s) => ({
-          ...s, kind: "story" as const,
-        }))
-      }
+        .eq("status", "approved")
+        .order("submitted_at", { ascending: false })
+      if (storiesRes.error) throw storiesRes.error
+      const approvedStoriesRaw = (storiesRes.data ?? []) as any[]
+      const approvedStories = await attachDisplayNames(client, approvedStoriesRaw)
       setStories(approvedStories)
 
-      // My submissions (books + stories) — relies on RLS "see own pending" + admin
+      // ------ My submissions (both types) ------
       const [myBooks, myStories] = await Promise.all([
         client.from("community_books").select("*").eq("uploaded_by", user.id).order("created_at", { ascending: false }),
-        client.from("community_posts").select("*").eq("published_by", user.id).order("created_at", { ascending: false }),
+        client.from("community_posts").select("*").eq("author_id", user.id).order("submitted_at", { ascending: false }),
       ])
+      const myStoriesWithNames = await attachDisplayNames(client, (myStories.data ?? []) as any[])
       const myMerged: CommunityItem[] = [
         ...((myBooks.data ?? []) as any[]).map((b) => ({ ...b, kind: "book" as const })),
-        ...((myStories.data ?? []) as any[]).map((s) => ({
-          ...s, kind: "story" as const, favourite_count: s.favourite_count ?? 0,
-        })),
+        ...myStoriesWithNames,
       ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
       setMySubmissions(myMerged)
 
-      // Admin-only queues
+      // ------ Admin-only queues ------
       if (isAdmin) {
         const [pBooks, pStories, flagged] = await Promise.all([
           client.from("community_books").select("*").eq("is_approved", false).order("created_at", { ascending: false }),
-          client.from("community_posts").select("*").eq("status", "pending").order("created_at", { ascending: false }),
+          client.from("community_posts").select("*").eq("status", "pending").order("submitted_at", { ascending: false }),
           client.from("community_books_with_flags").select("*").order("created_at", { ascending: false }),
         ])
         setPendingBooks(((pBooks.data ?? []) as any[]).map((b) => ({ ...b, kind: "book" as const })))
-        setPendingStories(((pStories.data ?? []) as any[]).map((s) => ({
-          ...s, kind: "story" as const, favourite_count: s.favourite_count ?? 0,
-        })))
+        const pendingStoriesWithNames = await attachDisplayNames(client, (pStories.data ?? []) as any[])
+        setPendingStories(pendingStoriesWithNames)
         const withFlags = ((flagged.data ?? []) as any[]).map((b) => ({ ...b, kind: "book" as const })) as CommunityBook[]
         setFlaggedBooks(withFlags.filter((b) => (b.unresolved_flag_count ?? 0) > 0))
         setAllBooks(withFlags.filter((b) => b.is_approved))
@@ -142,4 +129,31 @@ export function useCommunity() {
     isLoading, error,
     reload: load,
   }
+}
+
+// Given an array of community_posts rows, fetch profile display names for
+// author_id values and attach them. Returns fully-shaped CommunityStory rows
+// with a created_at alias mapped from submitted_at.
+async function attachDisplayNames(client: any, rows: any[]): Promise<CommunityStory[]> {
+  const authorIds = Array.from(
+    new Set(rows.map((r) => r.author_id).filter(Boolean))
+  ) as string[]
+
+  let nameMap: Record<string, string | null> = {}
+  if (authorIds.length > 0) {
+    const { data: profiles } = await client
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", authorIds)
+    for (const p of (profiles ?? []) as any[]) {
+      nameMap[p.id] = p.display_name ?? null
+    }
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    created_at: r.submitted_at ?? r.created_at ?? new Date().toISOString(),
+    author_display_name: r.author_id ? (nameMap[r.author_id] ?? null) : null,
+    kind: "story" as const,
+  }))
 }
